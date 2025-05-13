@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Information Display</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .info-section {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #444;
+            margin-top: 0;
+        }
+        .info-item {
+            margin-bottom: 10px;
+        }
+        .label {
+            font-weight: bold;
+            display: inline-block;
+            width: 180px;
+        }
+        .value {
+            display: inline-block;
+        }
+        .disclaimer {
+            background-color: #fffacc;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Client Information Display</h1>
+    <div class="disclaimer">
+        <strong>Note:</strong> This page demonstrates the type of information websites can collect about visitors.
+        This is for educational purposes only and helps illustrate privacy concepts and web security awareness.
+    </div>
+    
+    <div class="info-section">
+        <h2>Browser & Device Information</h2>
+        <div id="browser-info"></div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Screen & Window Information</h2>
+        <div id="screen-info"></div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Network Information</h2>
+        <div id="network-info"></div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Location Information</h2>
+        <div id="geo-info"></div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Battery Information</h2>
+        <div id="battery-info"></div>
+    </div>
+
+    <script>
+        // Function to create and append info items
+        function addInfoItem(containerId, label, value) {
+            const container = document.getElementById(containerId);
+            const item = document.createElement('div');
+            item.className = 'info-item';
+            
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'label';
+            labelSpan.textContent = label + ': ';
+            
+            const valueSpan = document.createElement('span');
+            valueSpan.className = 'value';
+            valueSpan.textContent = value;
+            
+            item.appendChild(labelSpan);
+            item.appendChild(valueSpan);
+            container.appendChild(item);
+        }
+        
+        // Collect and display browser & device information
+        const browserInfo = {
+            'User Agent': navigator.userAgent,
+            'Browser Language': navigator.language,
+            'Cookies Enabled': navigator.cookieEnabled ? 'Yes' : 'No',
+            'Do Not Track': navigator.doNotTrack || 'Not specified',
+            'Platform': navigator.platform,
+            'Browser Vendor': navigator.vendor || 'Not available',
+            'Browser Version': navigator.appVersion || 'Not available'
+        };
+        
+        Object.entries(browserInfo).forEach(([label, value]) => {
+            addInfoItem('browser-info', label, value);
+        });
+        
+        // Collect and display screen & window information
+        const screenInfo = {
+            'Screen Width': window.screen.width + 'px',
+            'Screen Height': window.screen.height + 'px',
+            'Color Depth': window.screen.colorDepth + ' bits',
+            'Pixel Depth': window.screen.pixelDepth + ' bits',
+            'Window Inner Width': window.innerWidth + 'px',
+            'Window Inner Height': window.innerHeight + 'px',
+            'Device Pixel Ratio': window.devicePixelRatio
+        };
+        
+        Object.entries(screenInfo).forEach(([label, value]) => {
+            addInfoItem('screen-info', label, value);
+        });
+        
+        // Collect network information if available
+        if ('connection' in navigator) {
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (connection) {
+                const networkInfo = {
+                    'Effective Type': connection.effectiveType || 'Not available',
+                    'Downlink': (connection.downlink ? connection.downlink + ' Mbps' : 'Not available'),
+                    'Round Trip Time': (connection.rtt ? connection.rtt + ' ms' : 'Not available'),
+                    'Save Data Mode': connection.saveData ? 'Enabled' : 'Disabled'
+                };
+                
+                Object.entries(networkInfo).forEach(([label, value]) => {
+                    addInfoItem('network-info', label, value);
+                });
+            }
+        } else {
+            addInfoItem('network-info', 'Network Information', 'API not available in this browser');
+        }
+        
+        // Request geolocation if available
+        if ('geolocation' in navigator) {
+            addInfoItem('geo-info', 'Geolocation API', 'Available (requires permission)');
+            
+            const geoBtn = document.createElement('button');
+            geoBtn.textContent = 'Get Location (Requires Permission)';
+            geoBtn.style.marginTop = '10px';
+            geoBtn.onclick = function() {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        document.getElementById('geo-info').innerHTML = '';
+                        addInfoItem('geo-info', 'Latitude', position.coords.latitude);
+                        addInfoItem('geo-info', 'Longitude', position.coords.longitude);
+                        addInfoItem('geo-info', 'Accuracy', position.coords.accuracy + ' meters');
+                        if (position.coords.altitude) {
+                            addInfoItem('geo-info', 'Altitude', position.coords.altitude + ' meters');
+                        }
+                    },
+                    function(error) {
+                        addInfoItem('geo-info', 'Error', error.message);
+                    }
+                );
+            };
+            document.getElementById('geo-info').appendChild(geoBtn);
+        } else {
+            addInfoItem('geo-info', 'Geolocation API', 'Not available in this browser');
+        }
+        
+        // Request battery info if available
+        if ('getBattery' in navigator) {
+            navigator.getBattery().then(function(battery) {
+                document.getElementById('battery-info').innerHTML = '';
+                addInfoItem('battery-info', 'Battery Charging', battery.charging ? 'Yes' : 'No');
+                addInfoItem('battery-info', 'Battery Level', (battery.level * 100) + '%');
+                addInfoItem('battery-info', 'Charging Time', battery.chargingTime === Infinity ? 'Unknown' : battery.chargingTime + ' seconds');
+                addInfoItem('battery-info', 'Discharging Time', battery.dischargingTime === Infinity ? 'Unknown' : battery.dischargingTime + ' seconds');
+                
+                // Listen for battery changes
+                battery.addEventListener('chargingchange', function() {
+                    document.querySelector('#battery-info .info-item:nth-child(1) .value').textContent = battery.charging ? 'Yes' : 'No';
+                });
+                battery.addEventListener('levelchange', function() {
+                    document.querySelector('#battery-info .info-item:nth-child(2) .value').textContent = (battery.level * 100) + '%';
+                });
+            });
+        } else {
+            addInfoItem('battery-info', 'Battery API', 'Not available in this browser');
+        }
+    </script>
+</body>
+</html>
