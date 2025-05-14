@@ -81,6 +81,52 @@
         <h2>Battery Information</h2>
         <div id="battery-info"></div>
     </div>
+    
+    <div class="info-section">
+        <h2>Hardware Information</h2>
+        <div id="hardware-info"></div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Browser Capabilities</h2>
+        <div id="capabilities-info"></div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Time & Timezone Information</h2>
+        <div id="time-info"></div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Media Devices</h2>
+        <div id="media-info"></div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Local Storage Analysis</h2>
+        <div id="storage-info"></div>
+    </div>
+    
+    <div class="info-section">
+        <h2>HTTP Request Headers</h2>
+        <div id="headers-info">
+            <p>Note: Complete headers are only visible server-side, but common headers are estimated below.</p>
+        </div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Canvas Fingerprinting Sample</h2>
+        <div id="fingerprint-info">
+            <p>This demonstrates one technique used for browser fingerprinting:</p>
+            <canvas id="fingerprintCanvas" width="220" height="30"></canvas>
+            <div id="canvas-hash"></div>
+        </div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Performance Information</h2>
+        <div id="performance-info"></div>
+    </div>
 
     <script>
         // Function to create and append info items
@@ -106,11 +152,14 @@
         const browserInfo = {
             'User Agent': navigator.userAgent,
             'Browser Language': navigator.language,
+            'Languages': Array.isArray(navigator.languages) ? navigator.languages.join(', ') : navigator.language,
             'Cookies Enabled': navigator.cookieEnabled ? 'Yes' : 'No',
             'Do Not Track': navigator.doNotTrack || 'Not specified',
             'Platform': navigator.platform,
             'Browser Vendor': navigator.vendor || 'Not available',
-            'Browser Version': navigator.appVersion || 'Not available'
+            'Browser Version': navigator.appVersion || 'Not available',
+            'App Name': navigator.appName || 'Not available',
+            'Product': navigator.product || 'Not available'
         };
         
         Object.entries(browserInfo).forEach(([label, value]) => {
@@ -121,11 +170,14 @@
         const screenInfo = {
             'Screen Width': window.screen.width + 'px',
             'Screen Height': window.screen.height + 'px',
+            'Available Width': window.screen.availWidth + 'px',
+            'Available Height': window.screen.availHeight + 'px',
             'Color Depth': window.screen.colorDepth + ' bits',
             'Pixel Depth': window.screen.pixelDepth + ' bits',
             'Window Inner Width': window.innerWidth + 'px',
             'Window Inner Height': window.innerHeight + 'px',
-            'Device Pixel Ratio': window.devicePixelRatio
+            'Device Pixel Ratio': window.devicePixelRatio,
+            'Orientation': screen.orientation ? screen.orientation.type : 'Not available'
         };
         
         Object.entries(screenInfo).forEach(([label, value]) => {
@@ -168,10 +220,18 @@
                         if (position.coords.altitude) {
                             addInfoItem('geo-info', 'Altitude', position.coords.altitude + ' meters');
                         }
+                        if (position.coords.heading) {
+                            addInfoItem('geo-info', 'Heading', position.coords.heading + '°');
+                        }
+                        if (position.coords.speed) {
+                            addInfoItem('geo-info', 'Speed', position.coords.speed + ' m/s');
+                        }
+                        addInfoItem('geo-info', 'Timestamp', new Date(position.timestamp).toString());
                     },
                     function(error) {
                         addInfoItem('geo-info', 'Error', error.message);
-                    }
+                    },
+                    { enableHighAccuracy: true }
                 );
             };
             document.getElementById('geo-info').appendChild(geoBtn);
@@ -198,6 +258,206 @@
             });
         } else {
             addInfoItem('battery-info', 'Battery API', 'Not available in this browser');
+        }
+        
+        // Hardware Information
+        const hardwareInfo = {
+            'Logical CPU Cores': navigator.hardwareConcurrency || 'Not available',
+            'Maximum Touch Points': navigator.maxTouchPoints || 'Not available',
+            'Device Memory': navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'Not available'
+        };
+        
+        Object.entries(hardwareInfo).forEach(([label, value]) => {
+            addInfoItem('hardware-info', label, value);
+        });
+        
+        // Browser Capabilities
+        const caps = {
+            'PDF Viewer Built-in': navigator.pdfViewerEnabled ? 'Yes' : 'No/Unknown',
+            'Java Enabled': navigator.javaEnabled ? navigator.javaEnabled() : 'Unknown',
+            'Cookies Enabled': navigator.cookieEnabled ? 'Yes' : 'No',
+            'Local Storage Available': typeof(Storage) !== 'undefined' ? 'Yes' : 'No',
+            'Session Storage Available': typeof(sessionStorage) !== 'undefined' ? 'Yes' : 'No',
+            'IndexedDB Available': window.indexedDB ? 'Yes' : 'No',
+            'WEBGL Available': (function() {
+                try {
+                    return !!window.WebGLRenderingContext && 
+                           !!document.createElement('canvas').getContext('experimental-webgl');
+                } catch(e) {
+                    return false;
+                }
+            })() ? 'Yes' : 'No',
+            'Web Workers Available': !!window.Worker ? 'Yes' : 'No',
+            'Service Workers Available': 'serviceWorker' in navigator ? 'Yes' : 'No',
+            'Push Notifications Available': 'PushManager' in window ? 'Yes' : 'No'
+        };
+        
+        Object.entries(caps).forEach(([label, value]) => {
+            addInfoItem('capabilities-info', label, value);
+        });
+        
+        // Time and Timezone Information
+        const now = new Date();
+        const timeInfo = {
+            'Current Time': now.toString(),
+            'Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown',
+            'Timezone Offset': now.getTimezoneOffset() + ' minutes from UTC',
+            'Date Locale': Intl.DateTimeFormat().resolvedOptions().locale
+        };
+        
+        Object.entries(timeInfo).forEach(([label, value]) => {
+            addInfoItem('time-info', label, value);
+        });
+        
+        // Media Devices Information (with permission)
+        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+            addInfoItem('media-info', 'Media Devices API', 'Available (requires permission)');
+            
+            const mediaBtn = document.createElement('button');
+            mediaBtn.textContent = 'Enumerate Media Devices (Requires Permission)';
+            mediaBtn.style.marginTop = '10px';
+            mediaBtn.onclick = function() {
+                navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+                .then(function(stream) {
+                    // Stop the stream immediately
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    // Now we can enumerate devices
+                    navigator.mediaDevices.enumerateDevices()
+                    .then(function(devices) {
+                        document.getElementById('media-info').innerHTML = '';
+                        let audioInputCount = 0;
+                        let audioOutputCount = 0;
+                        let videoInputCount = 0;
+                        
+                        devices.forEach(function(device) {
+                            if (device.kind === 'audioinput') audioInputCount++;
+                            if (device.kind === 'audiooutput') audioOutputCount++;
+                            if (device.kind === 'videoinput') videoInputCount++;
+                        });
+                        
+                        addInfoItem('media-info', 'Microphones', audioInputCount);
+                        addInfoItem('media-info', 'Speakers/Headphones', audioOutputCount);
+                        addInfoItem('media-info', 'Cameras', videoInputCount);
+                    });
+                })
+                .catch(function(err) {
+                    addInfoItem('media-info', 'Error', err.message);
+                });
+            };
+            document.getElementById('media-info').appendChild(mediaBtn);
+        } else {
+            addInfoItem('media-info', 'Media Devices API', 'Not available in this browser');
+        }
+        
+        // Local Storage Analysis
+        try {
+            if (window.localStorage) {
+                const storageInfo = {
+                    'LocalStorage Available': 'Yes',
+                    'LocalStorage Items': localStorage.length,
+                    'SessionStorage Available': window.sessionStorage ? 'Yes' : 'No',
+                    'SessionStorage Items': window.sessionStorage ? sessionStorage.length : 'N/A',
+                    'Cookies Enabled': navigator.cookieEnabled ? 'Yes' : 'No',
+                    'Cookie Count': document.cookie ? document.cookie.split(';').length : 0
+                };
+                
+                Object.entries(storageInfo).forEach(([label, value]) => {
+                    addInfoItem('storage-info', label, value);
+                });
+            } else {
+                addInfoItem('storage-info', 'Local Storage', 'Not available');
+            }
+        } catch (e) {
+            addInfoItem('storage-info', 'Error accessing storage', e.message);
+        }
+        
+        // HTTP Headers (estimation)
+        const commonHeaders = {
+            'User-Agent': navigator.userAgent,
+            'Accept-Language': navigator.language,
+            'DNT (Do Not Track)': navigator.doNotTrack || 'Not specified',
+            'Referer': document.referrer || 'None/Direct Navigation',
+            'Host': window.location.host,
+            'Origin': window.location.origin
+        };
+        
+        Object.entries(commonHeaders).forEach(([label, value]) => {
+            addInfoItem('headers-info', label, value);
+        });
+        
+        // Canvas fingerprinting demo
+        try {
+            const canvas = document.getElementById('fingerprintCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Draw various things to make a unique canvas
+            ctx.textBaseline = "top";
+            ctx.font = "14px 'Arial'";
+            ctx.textBaseline = "alphabetic";
+            ctx.fillStyle = "#f60";
+            ctx.fillRect(125, 1, 62, 20);
+            ctx.fillStyle = "#069";
+            ctx.fillText("Fingerprint", 2, 15);
+            ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+            ctx.fillText("Test", 4, 17);
+            
+            // Create a "hash" of the canvas
+            const dataURL = canvas.toDataURL();
+            const hash = dataURL.length; // Simple "hash" - just the length
+            
+            // Display a simplified hash
+            addInfoItem('canvas-hash', 'Canvas Fingerprint Value', 'Signature Length: ' + hash);
+        } catch (e) {
+            addInfoItem('canvas-hash', 'Canvas Fingerprinting', 'Failed: ' + e.message);
+        }
+        
+        // Performance Information
+        if (window.performance) {
+            const perfInfo = {
+                'Navigation Type': (function() {
+                    const navType = performance.navigation ? performance.navigation.type : null;
+                    if (navType === 0) return 'Navigate';
+                    if (navType === 1) return 'Reload';
+                    if (navType === 2) return 'Back/Forward';
+                    return 'Unknown';
+                })(),
+                'Redirect Count': performance.navigation ? performance.navigation.redirectCount : 'Unknown',
+                'Page Load Time': performance.timing ? 
+                    (performance.timing.loadEventEnd - performance.timing.navigationStart) + ' ms' : 
+                    'Not available'
+            };
+            
+            Object.entries(perfInfo).forEach(([label, value]) => {
+                addInfoItem('performance-info', label, value);
+            });
+            
+            // Try to get newer performance data
+            if (performance.getEntriesByType) {
+                try {
+                    const navEntry = performance.getEntriesByType('navigation')[0];
+                    if (navEntry) {
+                        addInfoItem('performance-info', 'DOM Complete Time', navEntry.domComplete + ' ms');
+                        addInfoItem('performance-info', 'DOM Interactive Time', navEntry.domInteractive + ' ms');
+                        addInfoItem('performance-info', 'Response Start Time', navEntry.responseStart + ' ms');
+                    }
+                } catch (e) {
+                    // Ignore errors for newer API
+                }
+                
+                try {
+                    const paintEntries = performance.getEntriesByType('paint');
+                    if (paintEntries.length > 0) {
+                        paintEntries.forEach(entry => {
+                            addInfoItem('performance-info', entry.name, entry.startTime + ' ms');
+                        });
+                    }
+                } catch (e) {
+                    // Ignore errors for newer API
+                }
+            }
+        } else {
+            addInfoItem('performance-info', 'Performance API', 'Not available');
         }
     </script>
 </body>
